@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+langchain
+langchain-openai
+langgraph
+psycopg2-binary
+SQLAlchemy
