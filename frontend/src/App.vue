@@ -23,6 +23,7 @@
       <input v-model="query" placeholder="請輸入訊息...." autocomplete="off" />
       <button type="submit">送出</button>
     </form>
+
   </div>
 </template>
 
