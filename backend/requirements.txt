@@ -5,3 +5,4 @@ langchain-openai
 langgraph
 psycopg2-binary
 SQLAlchemy
+langchain-community
