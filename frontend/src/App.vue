@@ -9,6 +9,8 @@
         <span class="icon" @click="clearMessages" title="清除聊天紀錄">🗑️</span>
         <span class="icon">✉️</span>
         <span class="icon">👤</span>
+        <span class="icon" @click="showWebHtmlDialog = true" title="分析網頁 HTML">🌐</span>
+        <span class="icon" @click="activateSearchSummarizeMode" title="自動搜尋與摘要">🔎</span>
       </div>
     </div>
     <div class="chat-body" ref="chatBody">
@@ -29,6 +31,17 @@
     </form>
 
   </div>
+  <div v-if="showWebHtmlDialog" class="web-html-dialog">
+    <div class="dialog-content">
+      <label>請輸入網址：</label>
+      <input v-model="webHtmlUrl" placeholder="https://example.com" style="width:80%" @keyup.enter="analyzeWebHtml" />
+      <button @click="analyzeWebHtml" :disabled="webHtmlLoading">分析</button>
+      <button @click="showWebHtmlDialog = false" :disabled="webHtmlLoading">取消</button>
+      <div v-if="webHtmlLoading" style="margin-top:8px">分析中...</div>
+      <div v-if="webHtmlResult" style="margin-top:8px;white-space:pre-wrap">{{ webHtmlResult }}</div>
+    </div>
+  </div>
+
 </template>
 
 <script setup>
@@ -39,6 +52,37 @@ const query = ref('')
 const messages = ref([])
 const useAgent = ref(false)
 
+// 網頁 HTML 分析 dialog 狀態
+const showWebHtmlDialog = ref(false)
+const webHtmlUrl = ref('')
+const webHtmlResult = ref('')
+const webHtmlLoading = ref(false)
+
+// 搜尋與摘要模式
+const useSearchSummarizeMode = ref(false)
+
+const analyzeWebHtml = async () => {
+  if (!webHtmlUrl.value.trim()) {
+    webHtmlResult.value = '請輸入網址';
+    return;
+  }
+  webHtmlLoading.value = true;
+  webHtmlResult.value = '';
+  try {
+    const res = await axios.post('/analyze-web-html', { url: webHtmlUrl.value })
+    webHtmlResult.value = res.data.summary || JSON.stringify(res.data)
+  } catch (e) {
+    webHtmlResult.value = 'Error: ' + (e.response?.data?.detail || e.message)
+  } finally {
+    webHtmlLoading.value = false;
+  }
+}
+
+// 啟用自動搜尋與摘要模式
+const activateSearchSummarizeMode = () => {
+  useSearchSummarizeMode.value = true;
+  messages.value.push({ sender: 'ai', text: '已啟用自動搜尋與摘要功能，請輸入您的問題' })
+}
 
 const clearMessages = () => {
   if (window.confirm('確定要刪除所有聊天紀錄嗎？')) {
@@ -66,7 +110,12 @@ const sendQuery = async () => {
   messages.value.push({ sender: 'ai', loading: true })
   try {
     let res
-    if (useAgent.value) {
+    if (useSearchSummarizeMode.value) {
+      // 搜尋與摘要模式
+      res = await axios.post('/search-and-summarize', { query: userMsg })
+      messages.value[messages.value.length - 1] = { sender: 'ai', text: res.data.summary || JSON.stringify(res.data) }
+      useSearchSummarizeMode.value = false
+    } else if (useAgent.value) {
       res = await axios.post('/agent-chat', { email_content: userMsg })
       messages.value[messages.value.length - 1] = { sender: 'ai', text: res.data.summary || JSON.stringify(res.data) }
     } else {
@@ -74,7 +123,7 @@ const sendQuery = async () => {
       messages.value[messages.value.length - 1] = { sender: 'ai', text: res.data.response }
     }
   } catch (e) {
-    messages.value[messages.value.length - 1] = { sender: 'ai', text: 'Error: ' + e.message }
+    messages.value[messages.value.length - 1] = { sender: 'ai', text: 'Error: ' + (e.response?.data?.detail || e.message) }
   }
 }
 </script>

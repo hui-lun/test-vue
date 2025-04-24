@@ -32,7 +32,8 @@ def root():
     return {"message": "LangGraph + LangChain backend running!"}
 
 from pydantic import BaseModel
-from .agent import run_agent_workflow
+from .agent import run_agent_workflow, fetch_and_analyze_web_html_node, ChatState
+from .agent_search import search_and_summarize
 
 
 class ChatRequest(BaseModel):
@@ -40,6 +41,12 @@ class ChatRequest(BaseModel):
 
 class AgentChatRequest(BaseModel):
     email_content: str
+
+class AnalyzeWebHtmlRequest(BaseModel):
+    url: str
+
+class SearchAndSummarizeRequest(BaseModel):
+    query: str
 
 @app.post("/agent-chat")
 def agent_chat(req: AgentChatRequest):
@@ -60,3 +67,14 @@ def chat(req: ChatRequest):
     else:
         text = str(response)
     return {"response": text}
+
+@app.post("/analyze-web-html")
+def analyze_web_html(req: AnalyzeWebHtmlRequest):
+    state = ChatState(email_content="", user_query=req.url, summary="")
+    result = fetch_and_analyze_web_html_node(state)
+    return {"summary": result["summary"], "full_result": result}
+
+@app.post("/search-and-summarize")
+def search_and_summarize_api(req: SearchAndSummarizeRequest):
+    summary = search_and_summarize(req.query)
+    return {"summary": summary}
