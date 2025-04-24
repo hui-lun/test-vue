@@ -92,38 +92,6 @@ def run_sql_agent(state: ChatState) -> ChatState:
 import requests
 
 # === 節點定義 ===
-def fetch_and_analyze_web_html(state: ChatState) -> ChatState:
-    url = state.get("user_query", "")
-    if not url or not isinstance(url, str):
-        return ChatState(
-            email_content=state.get("email_content", ""),
-            user_query=url,
-            summary="請提供正確的網址"
-        )
-    try:
-        html = requests.get(url, timeout=10).text
-    except Exception as e:
-        return ChatState(
-            email_content=state.get("email_content", ""),
-            user_query=url,
-            summary=f"無法取得網頁內容: {e}"
-        )
-    # 讓 LLM 分析 HTML 並產生回應
-    prompt = f"請閱讀以下 HTML 並摘要這個網頁的重點內容：\n\n{html[:8000]}"  # 避免 prompt 太長
-    try:
-        analysis = llm.invoke(prompt)
-        if hasattr(analysis, "content"):
-            summary = analysis.content
-        else:
-            summary = str(analysis)
-    except Exception as e:
-        summary = f"LLM 分析失敗: {e}"
-    return ChatState(
-        email_content=state.get("email_content", ""),
-        user_query=url,
-        summary=summary
-    )
-
 def parse_email(state: ChatState) -> ChatState:
     user_query = state.get("email_content", "")
     return ChatState(
@@ -166,8 +134,7 @@ def generate_email_reply(state: ChatState) -> ChatState:
     print("\n=== 準備寄出 Email ===\n")
     print(reply)
     return state
-
-# === LangGraph 定義 ===
+    
 def fetch_and_analyze_web_html_node(state: ChatState) -> ChatState:
     query = state.get("user_query", "")
     summary = search_and_summarize(query)
@@ -177,9 +144,9 @@ def fetch_and_analyze_web_html_node(state: ChatState) -> ChatState:
         summary=summary
     )
 
-graph = StateGraph(ChatState)
+# === LangGraph 定義 ===
 
-# === 將流程圖存成 PDF ===
+graph = StateGraph(ChatState)
 
 graph.add_node("parse_email", parse_email)
 graph.add_node("run_sql_agent", run_sql_agent)
