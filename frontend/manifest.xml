@@ -3,15 +3,15 @@
   xmlns="http://schemas.microsoft.com/office/appforoffice/1.1"
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0"
-  xmlns:mailappor="http://schemas.microsoft.com/office/mailappversionoverrides/1.0"
+  xmlns:mailappor="http://schemas.microsoft.com/office/mailappversionoverrides/1.1"
   xsi:type="MailApp">
 
-  <Id>f17fa7b1-b9e7-45a7-9806-f7a6e8d5d0d5</Id>
+  <Id>f17fa7b1-b9e7-45a7-9806-f7a6e8d5d0d6</Id>
   <Version>1.0.0.0</Version>
   <ProviderName>Chatbot Dev</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
 
-  <DisplayName DefaultValue="Chatbot Giga2"/>
+  <DisplayName DefaultValue="Chatbot Giga3"/>
   <Description DefaultValue="A chatbot connected to your mail content"/>
   <IconUrl DefaultValue="https://officedev.github.io/Office-Add-in-samples/Samples/hello-world/outlook-hello-world/assets/icon-32.png"/>
   <HighResolutionIconUrl DefaultValue="https://officedev.github.io/Office-Add-in-samples/Samples/hello-world/outlook-hello-world/assets/icon-64.png"/>
@@ -23,69 +23,80 @@
 
   <Requirements>
     <Sets>
-      <Set Name="Mailbox" MinVersion="1.3"/>
+      <Set Name="Mailbox" MinVersion="1.5"/>
     </Sets>
   </Requirements>
+
+
 
   <FormSettings>
     <Form xsi:type="ItemRead">
       <DesktopSettings>
-        <SourceLocation DefaultValue="https://5872-59-124-2-11.ngrok-free.app/"/>
+        <SourceLocation DefaultValue="https://your-url.com/" />
         <RequestedHeight>400</RequestedHeight>
       </DesktopSettings>
     </Form>
   </FormSettings>
-
   <Permissions>ReadItem</Permissions>
-
   <Rule xsi:type="ItemIs" ItemType="Message" FormType="Read"/>
 
   <VersionOverrides xmlns="http://schemas.microsoft.com/office/mailappversionoverrides" xsi:type="VersionOverridesV1_0">
-    <Hosts>
-      <Host xsi:type="MailHost">
-        <DesktopFormFactor>
-          <ExtensionPoint xsi:type="MessageReadCommandSurface">
-            <OfficeTab id="TabDefault">
-              <Group id="cmdGroup">
-                <Label resid="groupLabel"/>
-                <Control xsi:type="Button" id="openChatbot">
-                  <Label resid="buttonLabel"/>
-                  <Supertip>
-                    <Title resid="buttonTitle"/>
-                    <Description resid="buttonDesc"/>
-                  </Supertip>
-                  <Icon>
-                    <bt:Image size="16" resid="icon16"/>
-                    <bt:Image size="32" resid="icon32"/>
-                    <bt:Image size="80" resid="icon80"/>
-                  </Icon>
-                  <Action xsi:type="ShowTaskpane">
-                    <SourceLocation resid="chatbotPane"/>
-                  </Action>
-                </Control>
-              </Group>
-            </OfficeTab>
-          </ExtensionPoint>
-        </DesktopFormFactor>
-      </Host>
-    </Hosts>
-    <Resources>
-      <bt:Images>
-        <bt:Image id="icon16" DefaultValue="https://officedev.github.io/Office-Add-in-samples/Samples/hello-world/outlook-hello-world/assets/icon-16.png"/>
-        <bt:Image id="icon32" DefaultValue="https://officedev.github.io/Office-Add-in-samples/Samples/hello-world/outlook-hello-world/assets/icon-32.png"/>
-        <bt:Image id="icon80" DefaultValue="https://officedev.github.io/Office-Add-in-samples/Samples/hello-world/outlook-hello-world/assets/icon-80.png"/>
-      </bt:Images>
-      <bt:Urls>
-        <bt:Url id="chatbotPane" DefaultValue="https://5872-59-124-2-11.ngrok-free.app/"/>
-      </bt:Urls>
-      <bt:ShortStrings>
-        <bt:String id="groupLabel" DefaultValue="Chatbot"/>
-        <bt:String id="buttonLabel" DefaultValue="Open Chatbot"/>
-        <bt:String id="buttonTitle" DefaultValue="Chatbot Panel"/>
-      </bt:ShortStrings>
-      <bt:LongStrings>
-        <bt:String id="buttonDesc" DefaultValue="Click to open the chatbot in a taskpane."/>
-      </bt:LongStrings>
-    </Resources>
+    <VersionOverrides xmlns="http://schemas.microsoft.com/office/mailappversionoverrides/1.1" xsi:type="VersionOverridesV1_1">
+      <Description resid="buttonDesc"/>
+      <Requirements>
+        <bt:Sets DefaultMinVersion="1.5">
+          <bt:Set Name="Mailbox"/>
+        </bt:Sets>
+      </Requirements>
+      <Hosts>
+        <Host xsi:type="MailHost">
+          <DesktopFormFactor>
+            <ExtensionPoint xsi:type="MessageReadCommandSurface">
+              <OfficeTab id="TabDefault">
+                <Group id="cmdGroup">
+                  <Label resid="groupLabel"/>
+                  <Control xsi:type="Button" id="openChatbot">
+                    <Label resid="buttonLabel"/>
+                    <Supertip>
+                      <Title resid="buttonTitle"/>
+                      <Description resid="buttonDesc"/>
+                    </Supertip>
+                    <Icon>
+                      <bt:Image size="16" resid="icon16"/>
+                      <bt:Image size="32" resid="icon32"/>
+                      <bt:Image size="80" resid="icon80"/>
+                    </Icon>
+                    <Action xsi:type="ShowTaskpane">
+                      <SourceLocation resid="chatbotPane"/>
+                      <SupportsPinning>true</SupportsPinning>
+                    </Action>
+                  </Control>
+                </Group>
+              </OfficeTab>
+            </ExtensionPoint>
+          </DesktopFormFactor>
+        </Host>
+      </Hosts>
+
+
+      <Resources>
+        <bt:Images>
+          <bt:Image id="icon16" DefaultValue="https://officedev.github.io/Office-Add-in-samples/Samples/hello-world/outlook-hello-world/assets/icon-16.png"/>
+          <bt:Image id="icon32" DefaultValue="https://officedev.github.io/Office-Add-in-samples/Samples/hello-world/outlook-hello-world/assets/icon-32.png"/>
+          <bt:Image id="icon80" DefaultValue="https://officedev.github.io/Office-Add-in-samples/Samples/hello-world/outlook-hello-world/assets/icon-80.png"/>
+        </bt:Images>
+        <bt:Urls>
+          <bt:Url id="chatbotPane" DefaultValue="https://5872-59-124-2-11.ngrok-free.app/"/>
+        </bt:Urls>
+        <bt:ShortStrings>
+          <bt:String id="groupLabel" DefaultValue="Chatbot"/>
+          <bt:String id="buttonLabel" DefaultValue="Open Chatbot"/>
+          <bt:String id="buttonTitle" DefaultValue="Chatbot Panel"/>
+        </bt:ShortStrings>
+        <bt:LongStrings>
+          <bt:String id="buttonDesc" DefaultValue="Click to open the chatbot in a taskpane."/>
+        </bt:LongStrings>
+      </Resources>
+    </VersionOverrides>
   </VersionOverrides>
 </OfficeApp>
