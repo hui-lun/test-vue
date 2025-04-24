@@ -1,37 +1,36 @@
-from .duckduckgo_search import duckduckgo_search
-import requests
-from .agent import llm
+from langchain_community.utilities import DuckDuckGoSearchAPIWrapper
+from .llm_config import llm  # LLM 設定統一由 llm_config.py 管理
 
-def search_and_summarize(query: str, max_results: int = 3) -> str:
+def search_and_summarize(query: str, max_results: int = 10) -> str:
     """
-    1. 以 DuckDuckGo 搜尋 query
-    2. 取得前幾個網址內容
-    3. 用 LLM 摘要內容
+    Use DuckDuckGoSearchAPIWrapper to fetch structured search results (with URLs), then summarize with LLM.
     """
-    results = duckduckgo_search(query, max_results=max_results)
-    if not results:
+    duck_api = DuckDuckGoSearchAPIWrapper()
+    try:
+        results = duck_api.results(query, max_results)
+        # print("[DEBUG] DuckDuckGo results (list):", type(results), results)
+    except Exception as e:
+        return f"DuckDuckGo 搜尋失敗: {e}"
+    if not results or not isinstance(results, list):
         return "找不到相關網頁。"
-    all_summaries = []
-    for res in results:
-        url = res['url']
-        title = res['title']
-        try:
-            html = requests.get(url, timeout=10).text
-        except Exception as e:
-            all_summaries.append(f"【{title}】({url})\n無法取得內容: {e}")
-            continue
-        # 過濾明顯無效的 HTML
-        if (not html or 
-            '403 Forbidden' in html or 
-            '404 Not Found' in html or 
-            '<meta' in html and len(html.strip()) < 2000):
-            all_summaries.append(f"【{title}】({url})\n此頁面內容無法取得或不包含有效資訊，已自動跳過。")
-            continue
-        prompt = f"請根據下列問題，閱讀 HTML 並根據內容回答問題：\n問題：{query}\n\nHTML：\n{html[:8000]}\n\n若無法從本頁找到答案，請簡短說明並建議使用者提供更明確的產品頁面。"
-        try:
-            analysis = llm.invoke(prompt)
-            summary = analysis.content if hasattr(analysis, "content") else str(analysis)
-        except Exception as e:
-            summary = f"LLM 分析失敗: {e}"
-        all_summaries.append(f"【{title}】({url})\n{summary}")
-    return "\n\n".join(all_summaries)
+    # 組 context，清楚標號、標題、網址、摘要
+    context = ""
+    url_list = []
+    for idx, res in enumerate(results, 1):
+        title = res.get("title", "")
+        snippet = res.get("snippet", "")
+        context += f"{idx}. {title}\n{snippet}\n\n"
+    prompt = (
+        f"Based ONLY on the following DuckDuckGo search results, answer the user's question as accurately as possible.\n"
+        f"Question: {query}\n"
+        f"Search Results:\n{context}\n"
+        f"- Only use information from the search results.\n"
+        f"- If the answer cannot be found, reply: 'Not enough information in the search results.'"
+    )
+    try:
+        answer = llm.invoke(prompt)
+        answer_text = answer.content if hasattr(answer, "content") else str(answer)
+        # return f"查詢到的網址：\n{url_section}\n\nAnswer：\n{answer_text}"
+        return answer_text
+    except Exception as e:
+        return f"LLM 分析失敗: {e}"

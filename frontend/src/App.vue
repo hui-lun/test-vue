@@ -9,7 +9,6 @@
         <span class="icon" @click="clearMessages" title="清除聊天紀錄">🗑️</span>
         <span class="icon">✉️</span>
         <span class="icon">👤</span>
-        <span class="icon" @click="showWebHtmlDialog = true" title="分析網頁 HTML">🌐</span>
         <span class="icon" @click="activateSearchSummarizeMode" title="自動搜尋與摘要">🔎</span>
       </div>
     </div>
@@ -31,16 +30,7 @@
     </form>
 
   </div>
-  <div v-if="showWebHtmlDialog" class="web-html-dialog">
-    <div class="dialog-content">
-      <label>請輸入網址：</label>
-      <input v-model="webHtmlUrl" placeholder="https://example.com" style="width:80%" @keyup.enter="analyzeWebHtml" />
-      <button @click="analyzeWebHtml" :disabled="webHtmlLoading">分析</button>
-      <button @click="showWebHtmlDialog = false" :disabled="webHtmlLoading">取消</button>
-      <div v-if="webHtmlLoading" style="margin-top:8px">分析中...</div>
-      <div v-if="webHtmlResult" style="margin-top:8px;white-space:pre-wrap">{{ webHtmlResult }}</div>
-    </div>
-  </div>
+
 
 </template>
 
@@ -52,11 +42,6 @@ const query = ref('')
 const messages = ref([])
 const useAgent = ref(false)
 
-// 網頁 HTML 分析 dialog 狀態
-const showWebHtmlDialog = ref(false)
-const webHtmlUrl = ref('')
-const webHtmlResult = ref('')
-const webHtmlLoading = ref(false)
 
 // 搜尋與摘要模式
 const useSearchSummarizeMode = ref(false)

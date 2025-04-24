@@ -11,7 +11,12 @@ from langchain_core.agents import AgentFinish
 # from langchain.agents import create_sql_agent
 from langchain_community.agent_toolkits.sql.base import create_sql_agent
 from langchain.agents.agent_types import AgentType
+from langchain_community.tools import DuckDuckGoSearchRun
+from langchain_community.utilities import DuckDuckGoSearchAPIWrapper
+from langchain.tools import Tool
+from pydantic import BaseModel
 
+from .agent_search import search_and_summarize
 
 # === 定義對話狀態 Schema ===
 class ChatState(TypedDict):
@@ -20,11 +25,7 @@ class ChatState(TypedDict):
     summary: str
 
 # === LLM 設定（改用 Gemma-3-27B 本地模型） ===
-llm = ChatOpenAI(
-    model="gemma-3-27b-it",
-    openai_api_key="EMPTY",
-    openai_api_base=os.getenv("VLLM_API_BASE")
-)
+from .llm_config import llm
 
 # === 工具設定 ===
 DATABASE_URL = f"postgresql://{os.getenv('POSTGRES_USER')}:{os.getenv('POSTGRES_PASSWORD')}@{os.getenv('POSTGRES_HOST')}:{os.getenv('POSTGRES_PORT')}/{os.getenv('POSTGRES_DB')}"
@@ -167,42 +168,19 @@ def generate_email_reply(state: ChatState) -> ChatState:
     return state
 
 # === LangGraph 定義 ===
-def fetch_and_summarize_web(url: str) -> str:
-    if not url or not isinstance(url, str):
-        return "請提供正確的網址"
-    try:
-        html = requests.get(url, timeout=10).text
-    except Exception as e:
-        return f"無法取得網頁內容: {e}"
-    prompt = f"請閱讀以下 HTML 並摘要這個網頁的重點內容：\n\n{html[:8000]}"
-    try:
-        analysis = llm.invoke(prompt)
-        if hasattr(analysis, "content"):
-            summary = analysis.content
-        else:
-            summary = str(analysis)
-    except Exception as e:
-        summary = f"LLM 分析失敗: {e}"
-    return summary
-
 def fetch_and_analyze_web_html_node(state: ChatState) -> ChatState:
-    url = state.get("user_query", "")
-    summary = fetch_and_summarize_web(url)
+    query = state.get("user_query", "")
+    summary = search_and_summarize(query)
     return ChatState(
         email_content=state.get("email_content", ""),
-        user_query=url,
+        user_query=query,
         summary=summary
     )
 
 graph = StateGraph(ChatState)
 
 # === 將流程圖存成 PDF ===
-try:
-    graph.visualize("my_langgraph.pdf")  # 直接產生 PDF
-    print("流程圖已儲存為 my_langgraph.pdf")
-except Exception as e:
-    print("流程圖儲存失敗，請確認已安裝 graphviz (apt install graphviz & pip install graphviz)")
-    print(e)
+
 graph.add_node("parse_email", parse_email)
 graph.add_node("run_sql_agent", run_sql_agent)
 graph.add_node("generate_email_reply", generate_email_reply)
@@ -210,9 +188,17 @@ graph.add_node("fetch_and_analyze_web_html_node", fetch_and_analyze_web_html_nod
 
 graph.set_entry_point("parse_email")
 graph.add_edge("parse_email", "run_sql_agent")
+graph.add_edge("parse_email", "fetch_and_analyze_web_html_node")
 graph.add_edge("run_sql_agent", "generate_email_reply")
 
 workflow = graph.compile()
+
+# try:
+#     graph.get_graph().draw_png("my_langgraph.png")
+#     print("流程圖已儲存為 my_langgraph.png")
+# except Exception as e:
+#     print("流程圖儲存失敗。")
+#     print(e)
 
 def run_agent_workflow(email_content: str):
     state: ChatState = {

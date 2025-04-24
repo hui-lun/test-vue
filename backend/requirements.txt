@@ -8,3 +8,5 @@ SQLAlchemy
 langchain-community
 graphviz
 beautifulsoup4
+pydantic
+duckduckgo-search
