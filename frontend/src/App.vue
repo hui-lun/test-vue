@@ -46,22 +46,6 @@ const useAgent = ref(false)
 // 搜尋與摘要模式
 const useSearchSummarizeMode = ref(false)
 
-const analyzeWebHtml = async () => {
-  if (!webHtmlUrl.value.trim()) {
-    webHtmlResult.value = '請輸入網址';
-    return;
-  }
-  webHtmlLoading.value = true;
-  webHtmlResult.value = '';
-  try {
-    const res = await axios.post('/analyze-web-html', { url: webHtmlUrl.value })
-    webHtmlResult.value = res.data.summary || JSON.stringify(res.data)
-  } catch (e) {
-    webHtmlResult.value = 'Error: ' + (e.response?.data?.detail || e.message)
-  } finally {
-    webHtmlLoading.value = false;
-  }
-}
 
 // 啟用自動搜尋與摘要模式
 const activateSearchSummarizeMode = () => {
@@ -105,7 +89,8 @@ const sendQuery = async () => {
       messages.value[messages.value.length - 1] = { sender: 'ai', text: res.data.summary || JSON.stringify(res.data) }
     } else {
       res = await axios.post('/chat', { query: userMsg })
-      messages.value[messages.value.length - 1] = { sender: 'ai', text: res.data.response }
+      // messages.value[messages.value.length - 1] = { sender: 'ai', text: res.data.response }
+      messages.value[messages.value.length - 1] = { sender: 'ai', text: res.data.summary || JSON.stringify(res.data) }
     }
   } catch (e) {
     messages.value[messages.value.length - 1] = { sender: 'ai', text: 'Error: ' + (e.response?.data?.detail || e.message) }

@@ -32,7 +32,7 @@ def root():
     return {"message": "LangGraph + LangChain backend running!"}
 
 from pydantic import BaseModel
-from .agent import run_agent_workflow, fetch_and_analyze_web_html_node, ChatState
+from .agent import run_agent_workflow
 from .agent_search import search_and_summarize
 
 
@@ -42,37 +42,40 @@ class ChatRequest(BaseModel):
 class AgentChatRequest(BaseModel):
     email_content: str
 
-class AnalyzeWebHtmlRequest(BaseModel):
-    url: str
-
 class SearchAndSummarizeRequest(BaseModel):
     query: str
 
 @app.post("/agent-chat")
 def agent_chat(req: AgentChatRequest):
     result = run_agent_workflow(req.email_content)
-    # 只回傳 summary 給前端，或可依需求擴充
-    return {"summary": result.get("summary", ""), "full_result": result}
+    print("[DEBUG] /agent-chat triggered, email_content:", req.email_content)
+    # 確保回傳 dict 給前端
+    if hasattr(result, "dict"):
+        result_dict = result.dict()
+    else:
+        result_dict = dict(result)
+    return {"summary": result_dict.get("summary", ""), "full_result": result_dict}
 
+# @app.post("/chat")
+# def chat(req: ChatRequest):
+#     response = llm.invoke(req.query)
+#     # 強制轉為字串，避免 [object Object]
+#     if hasattr(response, "content"):
+#         text = response.content
+#     elif hasattr(response, "text"):
+#         text = response.text
+#     elif hasattr(response, "message"):
+#         text = response.message
+#     else:
+#         text = str(response)
+#     return {"response": text}
 @app.post("/chat")
 def chat(req: ChatRequest):
-    response = llm.invoke(req.query)
-    # 強制轉為字串，避免 [object Object]
-    if hasattr(response, "content"):
-        text = response.content
-    elif hasattr(response, "text"):
-        text = response.text
-    elif hasattr(response, "message"):
-        text = response.message
-    else:
-        text = str(response)
-    return {"response": text}
-
-@app.post("/analyze-web-html")
-def analyze_web_html(req: AnalyzeWebHtmlRequest):
-    state = ChatState(email_content="", user_query=req.url, summary="")
-    result = fetch_and_analyze_web_html_node(state)
-    return {"summary": result["summary"], "full_result": result}
+    print("[DEBUG] /chat called, req.query:", req.query)
+    result = run_agent_workflow(req.query)
+    print("[DEBUG] /chat run_agent_workflow result:", result)
+    result_dict = dict(result)
+    return {"summary": str(result_dict.get("summary", ""))}
 
 @app.post("/search-and-summarize")
 def search_and_summarize_api(req: SearchAndSummarizeRequest):

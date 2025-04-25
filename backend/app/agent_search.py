@@ -1,5 +1,5 @@
 from langchain_community.utilities import DuckDuckGoSearchAPIWrapper
-from .llm_config import llm  # LLM 設定統一由 llm_config.py 管理
+from .main import llm
 
 def search_and_summarize(query: str, max_results: int = 10) -> str:
     """
