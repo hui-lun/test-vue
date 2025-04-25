@@ -11,7 +11,7 @@
   <ProviderName>Chatbot Dev</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
 
-  <DisplayName DefaultValue="Chatbot Giga3"/>
+  <DisplayName DefaultValue="Chatbot Giga4.5"/>
   <Description DefaultValue="A chatbot connected to your mail content"/>
   <IconUrl DefaultValue="https://officedev.github.io/Office-Add-in-samples/Samples/hello-world/outlook-hello-world/assets/icon-32.png"/>
   <HighResolutionIconUrl DefaultValue="https://officedev.github.io/Office-Add-in-samples/Samples/hello-world/outlook-hello-world/assets/icon-64.png"/>
@@ -69,6 +69,7 @@
                     <Action xsi:type="ShowTaskpane">
                       <SourceLocation resid="chatbotPane"/>
                       <SupportsPinning>true</SupportsPinning>
+                      <SupportsNoItemContext>true</SupportsNoItemContext>
                     </Action>
                   </Control>
                 </Group>
@@ -86,7 +87,7 @@
           <bt:Image id="icon80" DefaultValue="https://officedev.github.io/Office-Add-in-samples/Samples/hello-world/outlook-hello-world/assets/icon-80.png"/>
         </bt:Images>
         <bt:Urls>
-          <bt:Url id="chatbotPane" DefaultValue="https://5872-59-124-2-11.ngrok-free.app/"/>
+          <bt:Url id="chatbotPane" DefaultValue="https://d79c-59-124-2-11.ngrok-free.app/"/>
         </bt:Urls>
         <bt:ShortStrings>
           <bt:String id="groupLabel" DefaultValue="Chatbot"/>

@@ -1,4 +1,144 @@
 /* assets/style.css: Outlook TaskPane-friendly CSS */
+
+.delete-popover-mask {
+  position: fixed;
+  left: 0; top: 0; right: 0; bottom: 0;
+  z-index: 2999;
+  background: transparent;
+}
+.delete-popover {
+  min-width: 240px;
+  max-width: 90vw;
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.15);
+  padding: 22px 28px 18px 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: popoverFadeIn 0.19s cubic-bezier(.22,1,.36,1);
+  position: absolute;
+}
+
+/* 彈窗置中樣式，必要時可加 .centered class 動態切換 */
+.delete-popover.centered {
+  position: fixed !important;
+  left: 50% !important;
+  top: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  z-index: 9999;
+  margin: 0;
+}
+
+@media (max-width: 600px) {
+  .delete-popover {
+    position: fixed !important;
+    left: 50% !important;
+    top: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    z-index: 9999;
+    margin: 0;
+  }
+}
+
+@keyframes popoverFadeIn {
+  from { opacity: 0; transform: translateY(-12px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+.delete-popover-icon {
+  margin-bottom: 6px;
+}
+.delete-popover-title {
+  font-size: 1.08em;
+  color: #1e1e1e;
+  margin-bottom: 18px;
+  text-align: center;
+}
+.delete-popover-actions {
+  display: flex;
+  gap: 16px;
+}
+.delete-popover-btn {
+  padding: 6px 22px;
+  border: none;
+  border-radius: 5px;
+  background: #f5f7fa;
+  color: #007bff;
+  font-size: 1em;
+  cursor: pointer;
+  transition: background 0.13s, color 0.13s;
+}
+.delete-popover-btn.danger {
+  background: #e74c3c;
+  color: #fff;
+}
+.delete-popover-btn:hover {
+  background: #e9f3ff;
+}
+.delete-popover-btn.danger:hover {
+  background: #d62c1a;
+}
+
+
+.drawer-menu-btn {
+  margin-left: 10px;
+  font-size: 20px;
+  color: #888;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: background 0.15s, color 0.15s;
+}
+.drawer-menu-btn:hover {
+  background: #f0f0f0;
+  color: #007bff;
+}
+.drawer-menu-popup {
+  position: absolute;
+  right: 16px;
+  top: 40px;
+  min-width: 100px;
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  animation: fadeIn 0.18s;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: none; }
+}
+.drawer-menu-item {
+  padding: 10px 18px;
+  font-size: 15px;
+  cursor: pointer;
+  color: #333;
+  border-radius: 6px;
+  transition: background 0.13s, color 0.13s;
+}
+.drawer-menu-item:hover {
+  background: #f7f7f7;
+  color: #007bff;
+}
+.drawer-menu-item.danger {
+  color: #e74c3c;
+}
+.drawer-menu-item.danger:hover {
+  background: #fbeaea;
+}
+.drawer-rename-input {
+  width: 80%;
+  font-size: 1em;
+  border: 1px solid #d6d6d6;
+  border-radius: 5px;
+  padding: 6px 10px;
+  outline: none;
+  margin-right: 10px;
+}
+
 body {
   font-family: 'Segoe UI', 'Arial', sans-serif;
   background: #f8f9fa;
@@ -17,12 +157,22 @@ body {
 .chat-app {
   position: relative;
   width: 100%;
-  max-width: 500px;
+  min-width: 320px;
   height: 100vh;
   background: #fff;
   display: flex;
   flex-direction: column;
   margin: 0 auto;
+}
+
+@media (max-width: 600px) {
+  .chat-app {
+    min-width: 0;
+    width: 100vw;
+    height: 100vh;
+    margin: 0;
+    border-radius: 0;
+  }
 }
 
 .chat-header {
@@ -39,7 +189,7 @@ body {
   align-items: center;
   font-weight: bold;
   font-size: 1.1em;
-  color: #007bff;
+  color: #1b5798;
 }
 
 .logo img {
@@ -126,7 +276,7 @@ body {
 }
 
 .chat-footer button {
-  background: #007bff;
+  background: #1b5798;
   color: #fff;
   border: none;
   border-radius: 6px;
@@ -142,7 +292,7 @@ body {
 }
 
 .chat-footer button:hover:not(:disabled) {
-  background: #0056b3;
+  background: 1b5798;
 }
 
 .loading-dots {
@@ -169,6 +319,126 @@ body {
 .loading-dots span:nth-child(3) {
   animation-delay: 0.4s;
 }
+
+/* history style */
+.drawer-mask {
+  position: fixed;
+  left: 0; top: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.18);
+  z-index: 1100;
+  transition: opacity 0.2s;
+}
+.history-drawer {
+  position: fixed;
+  top: 0;
+  left: -320px;
+  width: 300px;
+  height: 100vh;
+  background: #fff;
+  box-shadow: 2px 0 18px rgba(0,0,0,0.14);
+  z-index: 1200;
+  transition: left 0.25s;
+  display: flex;
+  flex-direction: column;
+}
+.history-drawer.open {
+  left: 0;
+}
+.drawer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 18px 12px 18px;
+  font-weight: bold;
+  border-bottom: 1px solid #e0e0e0;
+  background: #f9fbfc;
+}
+.close-btn {
+  cursor: pointer;
+  font-size: 22px;
+  color: #888;
+  transition: color 0.2s;
+}
+.close-btn:hover {
+  color: #e74c3c;
+}
+.drawer-list {
+  flex: 1;
+  list-style: none;
+  margin: 0;
+  padding: 0 0 16px 0;
+  overflow-y: auto;
+}
+.drawer-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px 12px 18px;
+  margin: 12px 12px 0 12px;
+  border-radius: 7px;
+}
+.drawer-item-left {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+}
+.drawer-item-right {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 8px;
+}
+.drawer-title {
+  font-weight: bold;
+  color: #1b5798;
+  font-size: 1em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
+}
+
+.drawer-item.selected {
+  background: #e9f3ff;
+}
+
+.drawer-item {
+  border-bottom: 1px solid #f3f3f3;
+}
+.drawer-item:last-child {
+  border-bottom: none;
+}
+.drawer-item:hover {
+  background: #f3f7fa;
+}
+
+.drawer-time {
+  font-size: 0.93em;
+  color: #888;
+  margin-left: 0;
+  margin-right: 8px;
+  white-space: nowrap;
+}
+.drawer-empty {
+  color: #aaa;
+  text-align: center;
+  padding: 32px 0;
+}
+@media (max-width: 600px) {
+  .history-drawer {
+    width: 100vw;
+    left: -100vw;
+    border-radius: 0;
+  }
+  .history-drawer.open {
+    left: 0;
+  }
+}
+
+
+
 
 @keyframes loading-bounce {
   0%, 80%, 100% { transform: scale(0.7); opacity: 0.7; }
