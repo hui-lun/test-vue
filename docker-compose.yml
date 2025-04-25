@@ -12,7 +12,8 @@ services:
 
     ports:
       - "8000:8000"
-
+    volumes:
+      - ./backend/app/checkpoints:/app/checkpoints
   frontend:
     build: ./frontend
     container_name: vue-frontend

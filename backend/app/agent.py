@@ -2,7 +2,6 @@ import os
 import re
 from typing_extensions import TypedDict
 from langchain.agents.agent_types import AgentType
-from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 from langchain_community.agent_toolkits.sql.base import create_sql_agent
 from langchain_community.agent_toolkits.sql.toolkit import SQLDatabaseToolkit
@@ -10,7 +9,7 @@ from langchain_community.utilities import SQLDatabase
 from langchain_openai import ChatOpenAI
 from langchain_core.agents import AgentFinish
 from langgraph.graph import StateGraph
-
+from langgraph.checkpoint.sqlite import SqliteSaver  # ✅ 加入 SQLite checkpointer
 
 # === ChatState Schema ===
 class ChatState(TypedDict):
@@ -55,6 +54,7 @@ agent = create_sql_agent(
     toolkit=toolkit,
     verbose=True,
     agent_type=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
+    handle_parsing_errors=True,  # ✅ 避免格式錯誤中斷
 )
 
 # === Email-to-Query Prompt Template ===
@@ -72,10 +72,10 @@ parse_chain = email_parse_prompt | llm
 def is_natural_query(text: str) -> bool:
     email_indicators = ["subject:", "dear", "regards", "best", "sincerely", "message", "thank you"]
     if any(word in text.lower() for word in email_indicators) or len(text.split("\n")) > 5:
-        return False  # It's likely an email
-    return True  # It's likely a direct query
+        return False
+    return True
 
-# === Parse Email Content (or Use Direct Query) ===
+# === Parse Email Content ===
 def parse_email(state: ChatState) -> ChatState:
     email = state.get("email_content", "").strip()
 
@@ -91,7 +91,7 @@ def parse_email(state: ChatState) -> ChatState:
         "summary": state.get("summary", "")
     }
 
-# === Run SQL Agent on User Query ===
+# === Run SQL Agent ===
 def run_sql_agent(state: ChatState) -> ChatState:
     query = state.get("user_query", "")
     if not isinstance(query, str):
@@ -128,7 +128,20 @@ def generate_email_reply(state: ChatState) -> ChatState:
     print(reply)
     return state
 
-# === LangGraph Workflow ===
+# === LangGraph Workflow with SQLite Checkpointer ===
+import sqlite3
+from langgraph.checkpoint.sqlite import SqliteSaver
+
+# Define the path for the SQLite database file to store checkpoints
+db_path = os.path.join("checkpoints", "bdm_workflow.sqlite3")
+
+# Ensure the directory exists
+os.makedirs(os.path.dirname(db_path), exist_ok=True)
+
+# Create a SQLite connection with the appropriate parameters
+conn = sqlite3.connect(db_path, check_same_thread=False)
+checkpointer = SqliteSaver(conn)
+
 graph = StateGraph(ChatState)
 graph.add_node("parse_email", parse_email)
 graph.add_node("run_sql_agent", run_sql_agent)
@@ -138,14 +151,116 @@ graph.set_entry_point("parse_email")
 graph.add_edge("parse_email", "run_sql_agent")
 graph.add_edge("run_sql_agent", "generate_email_reply")
 
-workflow = graph.compile()
+workflow = graph.compile(checkpointer=checkpointer)
 
-# === Entry Function for Integration ===
-def run_agent_workflow(email_content: str):
-    state: ChatState = {
+
+import hashlib
+import re
+import json
+
+def generate_thread_id(email_content: str) -> str:
+    # Normalize the email content to improve consistency
+    # 1. Convert to lowercase
+    # 2. Remove extra whitespace
+    # 3. Remove punctuation that doesn't affect meaning
+    normalized_content = email_content.lower()
+    normalized_content = re.sub(r'\s+', ' ', normalized_content).strip()
+    normalized_content = re.sub(r'[,.!?;:\'"]', '', normalized_content)
+    
+    # Generate a hash based on the normalized content
+    thread_id = "thread-" + hashlib.sha256(normalized_content.encode()).hexdigest()[:12]
+    return thread_id
+
+
+def get_existing_thread_ids():
+    """
+    Get a list of existing thread IDs from the SQLite database.
+    
+    Returns:
+        list: List of thread IDs that have checkpoints
+    """
+    if not os.path.exists(db_path):
+        return []
+        
+    try:
+        # Connect to the SQLite database
+        with sqlite3.connect(db_path) as conn:
+            cursor = conn.cursor()
+            
+            # Check if the checkpoints table exists
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='checkpoints'")
+            if not cursor.fetchone():
+                return []
+                
+            # Query for unique thread_ids in the configurable column
+            cursor.execute("SELECT DISTINCT json_extract(configurable, '$.thread_id') FROM checkpoints")
+            thread_ids = [row[0] for row in cursor.fetchall() if row[0]]
+            return thread_ids
+    except Exception as e:
+        print(f"Error getting thread IDs: {str(e)}")
+        return []
+
+# === Entry Function with thread_id ===
+def run_agent_workflow(email_content: str, use_existing_checkpoint: bool = True, custom_thread_id: str = None):
+    """
+    Process email content through the LangGraph workflow.
+    
+    Args:
+        email_content: The email content to process
+        use_existing_checkpoint: Whether to use existing checkpoints for this thread_id
+                                 If True, will resume from previous state if available
+                                 If False, will start a new conversation thread
+        custom_thread_id: Optional custom thread ID to use instead of generating one
+                         This allows explicitly continuing a specific conversation
+    
+    Returns:
+        The result of the workflow execution
+    """
+    # Use custom thread ID if provided, otherwise generate one from email content
+    thread_id = custom_thread_id if custom_thread_id else generate_thread_id(email_content)
+    
+    # Debug information
+    print(f"🧵 Running with thread_id: {thread_id}")
+    print(f"📁 Saving checkpoints to: {os.path.abspath(db_path)}")
+    print(f"🔄 Using existing checkpoint: {use_existing_checkpoint}")
+    
+    # Check if checkpoint exists for this thread_id
+    existing_threads = get_existing_thread_ids()
+    checkpoint_exists = os.path.exists(db_path) and thread_id in existing_threads
+    print(f"💾 Checkpoint exists for this thread_id: {checkpoint_exists}")
+    print(f"📃 Existing thread IDs: {existing_threads}")
+    
+    # Initialize default state
+    new_state: ChatState = {
         "email_content": email_content,
         "user_query": "",
         "summary": ""
     }
-    result = workflow.invoke(state)
-    return result
+    
+    # Try to get existing state if checkpoint exists and we want to use it
+    if checkpoint_exists and use_existing_checkpoint:
+        try:
+            cached_state = workflow.get_state({"configurable": {"thread_id": thread_id}})
+            if cached_state and cached_state.get("summary"):
+                print("♻️ Using cached summary.")
+                print(f"Cached summary: {cached_state.get('summary')[:100]}...")
+                # Use the cached state instead of creating a new one
+                new_state = cached_state
+        except Exception as e:
+            print(f"Could not retrieve state: {str(e)}")
+
+    state = new_state
+    
+    config = {
+        "configurable": {"thread_id": thread_id},
+        "use_existing_checkpoint": use_existing_checkpoint
+    }
+    
+    # Execute the workflow
+    try:
+        result = workflow.invoke(state, config=config)
+        print(f"✅ Workflow completed successfully for thread_id: {thread_id}")
+        return result
+    except Exception as e:
+        print(f"❌ Error in workflow execution: {str(e)}")
+        raise
