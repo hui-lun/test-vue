@@ -8,6 +8,7 @@ from typing_extensions import TypedDict
 from langchain_core.agents import AgentFinish
 from langchain_community.agent_toolkits.sql.base import create_sql_agent
 from langchain.agents.agent_types import AgentType
+from langchain.prompts import PromptTemplate
 from langchain.tools import tool
 import traceback
 
@@ -62,6 +63,18 @@ def is_natural_query(text: str) -> bool:
 
 # Import tools from agent_tools.py
 from .agent_tools import run_sql_agent, fetch_and_analyze_web_html_node
+
+# === Email-to-Query Prompt Template ===
+email_parse_prompt = PromptTemplate.from_template("""
+From the email below, extract a clear and concise query intention in English that describes what information the user wants from the database.
+===
+{email}
+===
+Only respond with the query intention.
+""")
+
+parse_chain = email_parse_prompt | llm
+
 
 # === Node Definitions ===
 def parse_email(state: ChatState) -> ChatState:
