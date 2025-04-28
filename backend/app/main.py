@@ -14,7 +14,7 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 或指定網址 ["http://localhost", "https://yourdomain.com"]
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -27,13 +27,9 @@ llm = ChatOpenAI(
     openai_api_base=os.getenv("VLLM_API_BASE")
 )
 
-@app.get("/")
-def root():
-    return {"message": "LangGraph + LangChain backend running!"}
-
 from pydantic import BaseModel
 from .agent import run_agent_workflow
-from .agent_search import search_and_summarize
+from .agent_search import search_and_summarize_advanced
 
 
 class ChatRequest(BaseModel):
@@ -45,11 +41,15 @@ class AgentChatRequest(BaseModel):
 class SearchAndSummarizeRequest(BaseModel):
     query: str
 
+
+@app.get("/")
+def root():
+    return {"message": "LangGraph + LangChain backend running!"}
+
 @app.post("/agent-chat")
 def agent_chat(req: AgentChatRequest):
     result = run_agent_workflow(req.email_content)
     print("[DEBUG] /agent-chat triggered, email_content:", req.email_content)
-    # 確保回傳 dict 給前端
     if hasattr(result, "dict"):
         result_dict = result.dict()
     else:
@@ -79,5 +79,6 @@ def chat(req: ChatRequest):
 
 @app.post("/search-and-summarize")
 def search_and_summarize_api(req: SearchAndSummarizeRequest):
-    summary = search_and_summarize(req.query)
+    # summary = search_and_summarize(req.query)
+    summary = search_and_summarize_advanced(req.query)
     return {"summary": summary}

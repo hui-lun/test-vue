@@ -1,36 +1,73 @@
+import re
 from langchain_community.utilities import DuckDuckGoSearchAPIWrapper
 from .main import llm
 
-def search_and_summarize(query: str, max_results: int = 10) -> str:
+def optimize_query(query: str) -> str:
+    prompt = (
+        f"Please directly reply with the most precise and most suitable English keywords for DuckDuckGo search, without any additional text, only reply with the keywords: \n{query}"
+    )
+    try:
+        result = llm.invoke(prompt)
+        content = result.content if hasattr(result, "content") else str(result)
+        # Only take the first line, avoid LLM returning multiple suggestions or explanations
+        return content.splitlines()[0].strip()
+    except Exception:
+        return query
+
+def score_result(res: dict, keywords: list[str]) -> int:
     """
-    Use DuckDuckGoSearchAPIWrapper to fetch structured search results (with URLs), then summarize with LLM.
+    Calculate the total number of times all keywords in keywords appear within a single search result (res).
+    """
+    combined = (res.get("title", "") + " " + res.get("snippet", "")).lower()
+    return sum(combined.count(kw) for kw in keywords)
+
+def keyword_filter(query: str, results: list, top_k: int = 5) -> list:
+    keywords = re.findall(r'\w+', query.lower())
+    scored = sorted(results, key=lambda r: score_result(r, keywords), reverse=True)
+    
+    return scored[:top_k]
+
+def search_and_summarize_advanced(query: str, max_results: int = 10, top_k: int = 5) -> str:
+    """
+    Use DuckDuckGoSearchAPIWrapper to fetch structured search results (with URLs), automatically filter the top_k most relevant results using keyword matching, and then summarize the filtered results with LLM.
     """
     duck_api = DuckDuckGoSearchAPIWrapper()
+    # Query optimization
+    optimized_query = optimize_query(query)
+    print('********************************') 
+    print(f"Optimized Query: {optimized_query}")
+    print('********************************')
     try:
-        results = duck_api.results(query, max_results)
-        # print("[DEBUG] DuckDuckGo results (list):", type(results), results)
+        results = duck_api.results(optimized_query, max_results)
     except Exception as e:
-        return f"DuckDuckGo 搜尋失敗: {e}"
+        return f"DuckDuckGo search failed: {e}"
     if not results or not isinstance(results, list):
-        return "找不到相關網頁。"
-    # 組 context，清楚標號、標題、網址、摘要
+        return "No relevant webpages found."
+
+    # Automatically focus the top_k most relevant results using keyword matching
+    filtered = keyword_filter(query, results, top_k=top_k)
+
     context = ""
-    url_list = []
-    for idx, res in enumerate(results, 1):
+    print('********************************')
+    print(f"Search Results: {filtered}")
+    print('********************************')
+    for idx, res in enumerate(filtered, 1):
         title = res.get("title", "")
         snippet = res.get("snippet", "")
-        context += f"{idx}. {title}\n{snippet}\n\n"
+        url = res.get("link", "")
+        context += f"{idx}. {title}\n{snippet}\nURL: {url}\n\n"
     prompt = (
         f"Based ONLY on the following DuckDuckGo search results, answer the user's question as accurately as possible.\n"
         f"Question: {query}\n"
         f"Search Results:\n{context}\n"
-        f"- Only use information from the search results.\n"
-        f"- If the answer cannot be found, reply: 'Not enough information in the search results.'"
+        f"- Only use information from the search results. Do NOT use any prior knowledge.\n"
+        f"- If the answer cannot be found in the search results, do NOT make up an answer. Instead, reply: 'Not enough information in the search results.'\n"
+        f"- Summarize the answer in 150 words or less, avoid repeating content.\n"
+        f"- Do not include the results number in the answer.\n"
+        f"- Do not include the URL in the answer.\n"
     )
     try:
         answer = llm.invoke(prompt)
-        answer_text = answer.content if hasattr(answer, "content") else str(answer)
-        # return f"查詢到的網址：\n{url_section}\n\nAnswer：\n{answer_text}"
-        return answer_text
+        return answer.content if hasattr(answer, "content") else str(answer)
     except Exception as e:
-        return f"LLM 分析失敗: {e}"
+        return f"LLM analysis failed: {e}"
