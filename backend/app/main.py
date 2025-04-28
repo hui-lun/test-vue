@@ -32,9 +32,20 @@ def root():
     return {"message": "LangGraph + LangChain backend running!"}
 
 from pydantic import BaseModel
+from .agent import run_agent_workflow
+
 
 class ChatRequest(BaseModel):
     query: str
+
+class AgentChatRequest(BaseModel):
+    email_content: str
+
+@app.post("/agent-chat")
+def agent_chat(req: AgentChatRequest):
+    result = run_agent_workflow(req.email_content)
+    # 只回傳 summary 給前端，或可依需求擴充
+    return {"summary": result.get("summary", ""), "full_result": result}
 
 @app.post("/chat")
 def chat(req: ChatRequest):

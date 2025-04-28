@@ -68,15 +68,17 @@
         </div>
       </div>
     </div>
-    <form class="chat-footer" @submit.prevent="sendQuery">
+        <form class="chat-footer" @submit.prevent="sendQuery">
       <input v-model="query" placeholder="請輸入訊息...." autocomplete="off" />
       <button type="submit">送出</button>
+      <label style="display:flex;align-items:center;margin-left:12px;font-size:1.1em;gap:4px">
+        <input type="checkbox" v-model="useAgent" style="width:22px;height:22px;accent-color:#1976d2;margin-right:4px" />
+        啟用智能助理
+      </label>
     </form>
+
   </div>
 </template>
-
-
-
 
 <script setup>
 import { ref, nextTick, watch, onMounted, computed } from 'vue'
@@ -196,6 +198,10 @@ function closeMenuOnOutside(e) {
 //     messages.value = []
 //   }
 // }
+const useAgent = ref(false)
+
+
+
 
 const chatBody = ref(null)
 
@@ -216,9 +222,14 @@ const sendQuery = async () => {
   query.value = ''
   messages.value.push({ sender: 'ai', loading: true })
   try {
-    //const res = await axios.post('http://192.168.1.193:8000/chat', { query: userMsg })
-    const res = await axios.post('/chat', { query: userMsg })
-    messages.value[messages.value.length - 1] = { sender: 'ai', text: res.data.response }
+    let res
+    if (useAgent.value) {
+      res = await axios.post('/agent-chat', { email_content: userMsg })
+      messages.value[messages.value.length - 1] = { sender: 'ai', text: res.data.summary || JSON.stringify(res.data) }
+    } else {
+      res = await axios.post('/chat', { query: userMsg })
+      messages.value[messages.value.length - 1] = { sender: 'ai', text: res.data.response }
+    }
   } catch (e) {
     messages.value[messages.value.length - 1] = { sender: 'ai', text: 'Error: ' + e.message }
   }
