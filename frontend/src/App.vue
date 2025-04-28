@@ -2,33 +2,47 @@
   <div class="chat-app">
     <!-- 遮罩 -->
     <div v-if="showHistoryMenu" class="drawer-mask" @click="closeHistoryMenu"></div>
+
     <!-- 歷史紀錄抽屜 -->
     <aside class="history-drawer" :class="{ open: showHistoryMenu }">
       <div class="drawer-header">
         <span>歷史紀錄</span>
         <span class="close-btn" @click="closeHistoryMenu">×</span>
       </div>
+
       <ul class="drawer-list">
-        <li v-for="(item, idx) in chatHistory" :key="idx"
-            :class="['drawer-item', { selected: idx === selectedHistoryIdx }]"
-            @click="selectHistory(idx)">
+        <li 
+          v-for="(item, idx) in chatHistory" 
+          :key="idx"
+          :class="['drawer-item', { selected: idx === selectedHistoryIdx }]"
+          @click="selectHistory(idx)"
+        >
           <template v-if="editIdx !== idx">
-  <div class="drawer-item-left">
-    <span class="drawer-title">{{ item.title }}</span>
-  </div>
-  <div class="drawer-item-right">
-    <span class="drawer-time">{{ item.time }}</span>
-    <span class="drawer-menu-btn" @click.stop="toggleMenu(idx)">⋯</span>
-    <div v-if="menuIdx === idx" class="drawer-menu-popup" @click.stop>
-      <div class="drawer-menu-item" @click.stop="startRename(idx, item.title)">重新命名</div>
-      <div class="drawer-menu-item danger" @click.stop="openDeleteModal(idx)">刪除</div>
-    </div>
-  </div>
-</template>
+            <div class="drawer-item-left">
+              <span class="drawer-title">{{ item.title }}</span>
+            </div>
+            <div class="drawer-item-right">
+              <span class="drawer-time">{{ item.time }}</span>
+              <span class="drawer-menu-btn" @click.stop="toggleMenu(idx)">⋯</span>
+
+              <div v-if="menuIdx === idx" class="drawer-menu-popup" @click.stop>
+                <div class="drawer-menu-item" @click.stop="startRename(idx, item.title)">重新命名</div>
+                <div class="drawer-menu-item danger" @click.stop="openDeleteModal(idx)">刪除</div>
+              </div>
+            </div>
+          </template>
+
           <template v-else>
-            <input class="drawer-rename-input" v-model="renameTitle" ref="renameInput" @keyup.enter="finishRename(idx)" @blur="finishRename(idx)" />
+            <input
+              class="drawer-rename-input"
+              v-model="renameTitle"
+              ref="renameInput"
+              @keyup.enter="finishRename(idx)"
+              @blur="finishRename(idx)"
+            />
           </template>
         </li>
+
         <li v-if="!chatHistory.length" class="drawer-empty">尚無歷史紀錄</li>
       </ul>
     </aside>
@@ -38,9 +52,20 @@
       <div v-if="showDeleteModal && deletePopoverPos" class="delete-popover-mask" @click="closeDeleteModal">
         <div class="delete-popover" :style="deletePopoverStyle" @click.stop>
           <div class="delete-popover-icon">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="12" fill="#ffeaea"/><path d="M9.5 11v4m5-4v4M5 7h14m-2 0-.545 9.26A2 2 0 0 1 14.46 18h-4.92a2 2 0 0 1-1.995-1.74L5 7Zm3-2h4a1 1 0 0 1 1 1v1H7V6a1 1 0 0 1 1-1Z" stroke="#e74c3c" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="12" fill="#ffeaea" />
+              <path 
+                d="M9.5 11v4m5-4v4M5 7h14m-2 0-.545 9.26A2 2 0 0 1 14.46 18h-4.92a2 2 0 0 1-1.995-1.74L5 7Zm3-2h4a1 1 0 0 1 1 1v1H7V6a1 1 0 0 1 1-1Z" 
+                stroke="#e74c3c" 
+                stroke-width="1.4" 
+                stroke-linecap="round" 
+                stroke-linejoin="round"
+              />
+            </svg>
           </div>
+
           <div class="delete-popover-title">確定要刪除此聊天紀錄嗎？</div>
+
           <div class="delete-popover-actions">
             <button class="delete-popover-btn danger" @click="doDeleteHistory">確定</button>
             <button class="delete-popover-btn" @click="closeDeleteModal">取消</button>
@@ -49,36 +74,54 @@
       </div>
     </teleport>
 
+    <!-- 聊天 Header -->
     <div class="chat-header">
       <div class="logo">
         <!-- <img src="/bdmchat-logo.png" alt="logo" /> -->
         <span>BDM.Agent</span>
       </div>
+
       <div class="header-icons">
         <span class="icon" @click="openHistoryMenu" title="聊天歷史紀錄">🕑</span>
         <!-- <span class="icon" @click="clearMessages" title="清除聊天紀錄">🗑️</span> -->
         <span class="icon" @click="sendEmailContent" title="傳入信件內容">✉️</span>
       </div>
     </div>
+
+    <!-- 聊天內容 -->
     <div class="chat-body" ref="chatBody">
       <div v-for="(msg, idx) in messages" :key="idx" :class="['msg-row', msg.sender]">
         <div :class="['msg-bubble', msg.sender]">
-          <div v-if="msg.loading" class="loading-dots"><span></span><span></span><span></span></div>
+          <div v-if="msg.loading" class="loading-dots">
+            <span></span><span></span><span></span>
+          </div>
           <div v-else v-html="msg.text"></div>
         </div>
       </div>
     </div>
-        <form class="chat-footer" @submit.prevent="sendQuery">
-      <input v-model="query" placeholder="請輸入訊息...." autocomplete="off" />
+
+    <!-- 聊天輸入區 -->
+    <form class="chat-footer" @submit.prevent="sendQuery">
+      <input 
+        v-model="query" 
+        placeholder="請輸入訊息...." 
+        autocomplete="off" 
+      />
       <button type="submit">送出</button>
+
       <label style="display:flex;align-items:center;margin-left:12px;font-size:1.1em;gap:4px">
-        <input type="checkbox" v-model="useAgent" style="width:22px;height:22px;accent-color:#1976d2;margin-right:4px" />
-        啟用智能助理
+        <input 
+          type="checkbox" 
+          v-model="useAgent" 
+          style="width:22px;height:22px;accent-color:#1976d2;margin-right:4px"
+        />
+        智能助理
       </label>
     </form>
 
   </div>
 </template>
+
 
 <script setup>
 import { ref, nextTick, watch, onMounted, computed } from 'vue'
