@@ -6,10 +6,9 @@
   </div>
 
   <div class="chat-app">
-    <!-- 遮罩 -->
     <div v-if="showHistoryMenu" class="drawer-mask" @click="closeHistoryMenu"></div>
 
-    <!-- 歷史紀錄抽屜 -->
+    <!-- chat history -->
     <aside class="history-drawer" :class="{ open: showHistoryMenu }">
       <div class="drawer-header">
         <span>歷史紀錄</span>
@@ -53,7 +52,7 @@
       </ul>
     </aside>
 
-    <!-- 刪除確認 Popover -->
+    <!-- delete double check Popover -->
     <teleport to="body">
       <div v-if="showDeleteModal && deletePopoverPos" class="delete-popover-mask" @click="closeDeleteModal">
         <div class="delete-popover" :style="deletePopoverStyle" @click.stop>
@@ -80,7 +79,7 @@
       </div>
     </teleport>
 
-    <!-- 聊天 Header -->
+    <!-- chatbot Header -->
     <div class="chat-header">
       <div class="logo">
         <!-- <img src="/bdmchat-logo.png" alt="logo" /> -->
@@ -94,7 +93,7 @@
       </div>
     </div>
 
-    <!-- 聊天內容 -->
+    <!-- Chatbot content-->
     <div class="chat-body" ref="chatBody">
       <div v-for="(msg, idx) in messages" :key="idx" :class="['msg-row', msg.sender]">
         <div :class="['msg-bubble', msg.sender]">
@@ -106,7 +105,7 @@
       </div>
     </div>
 
-    <!-- 聊天輸入區 -->
+    <!-- Chat input area -->
     <form class="chat-footer" @submit.prevent="handleButtonClick">
       <input 
         v-model="query" 
@@ -118,7 +117,7 @@
         {{ isLoading ? "停止" : "送出" }}
       </button>
 
-      <label style="display:flex;align-items:center;margin-left:12px;font-size:1.1em;gap:4px">
+      <label style="display:flex;align-items:center;margin-left:12px;font-size:12px;gap:4px">
         <input 
           type="checkbox" 
           v-model="useAgent" 
@@ -136,77 +135,55 @@
 import { ref, nextTick, watch, onMounted, computed } from 'vue'
 import axios from 'axios'
 
-const query = ref('')
-const messages = ref([])
+// ====== Basic state ======
+const query = ref('') // User input query
+const messages = ref([]) // All chat messages
+const loading = ref(true) // Loading state for plugin readiness
+const isLoading = ref(false) // Loading state for message generation
+const useAgent = ref(false) // Switch between agent mode and normal chat
+let controller = null // Abort controller for request cancellation
+const chatBody = ref(null) // Chat body DOM element for scrolling
 
-// 歷史紀錄抽屜狀態與資料
-const showHistoryMenu = ref(false)
-const selectedHistoryIdx = ref(null)
-const chatHistory = ref([
-  { title: '2024-04-25 上午對話', time: '09:21', messages: [
-    { sender: 'user', text: '你好' }, { sender: 'ai', text: '哈囉！有什麼可以幫您？' }
-  ] },
-  { title: '2024-04-24 下午對話', time: '15:02', messages: [
-    { sender: 'user', text: '今天天氣？' }, { sender: 'ai', text: '晴時多雲' }
-  ] }
+// ====== Chat history drawer management ======
+const showHistoryMenu = ref(false) // Whether history drawer is shown
+const selectedHistoryIdx = ref(null) // Currently selected history index
+const chatHistory = ref([ // Hardcoded initial chat history examples
+  { title: '2024-04-25 Morning', time: '09:21', messages: [{ sender: 'user', text: '你好' }, { sender: 'ai', text: '哈囉！有什麼可以幫您？' }] },
+  { title: '2024-04-24 Afternoon', time: '15:02', messages: [{ sender: 'user', text: '今天天氣？' }, { sender: 'ai', text: '晴時多雲' }] }
 ])
+const menuIdx = ref(null) // Menu index for context actions
+const editIdx = ref(null) // Edit index for renaming
+const renameTitle = ref('') // Temporary title for renaming
+const renameInput = ref(null) // Input DOM for renaming focus
+const showDeleteModal = ref(false) // Whether delete modal is shown
+const deletePopoverPos = ref(null) // Delete modal positioning
+let pendingDeleteIdx = null // Index pending delete
 
-// menu 與 rename 狀態
-const menuIdx = ref(null) // 哪個 menu 展開
-const editIdx = ref(null) // 哪個在 rename
-const renameTitle = ref('')
-const renameInput = ref(null)
-
-function openHistoryMenu() {
-  showHistoryMenu.value = true
-  closeMenu()
-}
-function closeHistoryMenu() {
-  showHistoryMenu.value = false
-  closeMenu()
-}
+// ====== Chat history drawer actions ======
+function openHistoryMenu() { showHistoryMenu.value = true; closeMenu() }
+function closeHistoryMenu() { showHistoryMenu.value = false; closeMenu() }
 function selectHistory(idx) {
   if (editIdx.value !== null || menuIdx.value !== null) return
   messages.value = [...chatHistory.value[idx].messages]
   selectedHistoryIdx.value = idx
   closeHistoryMenu()
 }
-function toggleMenu(idx) {
-  menuIdx.value = menuIdx.value === idx ? null : idx
-  editIdx.value = null
-}
-function closeMenu() {
-  menuIdx.value = null
-  editIdx.value = null
-}
-function startRename(idx, title) {
-  editIdx.value = idx
-  menuIdx.value = null
-  renameTitle.value = title
-  nextTick(() => {
-    if (renameInput.value) renameInput.value.focus()
-  })
-}
+function toggleMenu(idx) { menuIdx.value = menuIdx.value === idx ? null : idx; editIdx.value = null }
+function closeMenu() { menuIdx.value = null; editIdx.value = null }
+function startRename(idx, title) { editIdx.value = idx; menuIdx.value = null; renameTitle.value = title; nextTick(() => renameInput.value?.focus()) }
 function finishRename(idx) {
   const val = renameTitle.value.trim()
   if (val) chatHistory.value[idx].title = val
   editIdx.value = null
 }
-const showDeleteModal = ref(false)
-const deletePopoverPos = ref(null)
-let pendingDeleteIdx = null
 function openDeleteModal(idx) {
   menuIdx.value = null
   nextTick(() => {
-    // 找到當前 drawer-item 的 DOM
     const items = document.querySelectorAll('.drawer-item')
     const el = items[idx]
     if (el) {
       const rect = el.getBoundingClientRect()
-      deletePopoverPos.value = {
-        top: rect.top + rect.height/2 + window.scrollY,
-        left: rect.right + 8 + window.scrollX
-      }
+      deletePopoverPos.value = { top: rect.top + rect.height/2 + window.scrollY, left: rect.right + 8 + window.scrollX }
     } else {
       deletePopoverPos.value = null
     }
@@ -214,11 +191,7 @@ function openDeleteModal(idx) {
     pendingDeleteIdx = idx
   })
 }
-function closeDeleteModal() {
-  showDeleteModal.value = false
-  deletePopoverPos.value = null
-  pendingDeleteIdx = null
-}
+function closeDeleteModal() { showDeleteModal.value = false; deletePopoverPos.value = null; pendingDeleteIdx = null }
 function doDeleteHistory() {
   if (pendingDeleteIdx !== null) {
     chatHistory.value.splice(pendingDeleteIdx, 1)
@@ -228,152 +201,95 @@ function doDeleteHistory() {
 }
 const deletePopoverStyle = computed(() => {
   if (!deletePopoverPos.value) return {}
-  return {
-    position: 'absolute',
-    top: deletePopoverPos.value.top + 'px',
-    left: deletePopoverPos.value.left + 'px',
-    zIndex: 3000
-  }
+  return { position: 'absolute', top: deletePopoverPos.value.top + 'px', left: deletePopoverPos.value.left + 'px', zIndex: 3000 }
 })
-// 點擊抽屜以外自動關閉 menu/input
-onMounted(() => {
-  document.addEventListener('click', closeMenuOnOutside)
-})
-function closeMenuOnOutside(e) {
-  const drawer = document.querySelector('.history-drawer')
-  if (drawer && !drawer.contains(e.target)) closeMenu()
-}
 
-
-const loading = ref(true);
-
-onMounted(() => {
-  Office.onReady(() => {
-    loading.value = false;
-  });
-});
-
-
-const useAgent = ref(false)
-
-const chatBody = ref(null)
-
-const scrollToBottom = () => {
-  nextTick(() => {
-    if (chatBody.value) {
-      chatBody.value.scrollTop = chatBody.value.scrollHeight
-    }
-  })
-}
-
-watch(messages, scrollToBottom, { deep: true })
-
-const isLoading = ref(false);
-let controller = null; // 控制請求中斷
-
-const handleButtonClick = async () => {
-  if (isLoading.value) {
-    // 如果正在 loading，按下按鈕就是停止生成
-    stopGenerating();
-  } else {
-    // 如果沒 loading，按下按鈕就是正常送出
-    await sendQuery();
-  }
-};
-
-const sendQuery = async () => {
-  if (!query.value.trim()) return;
-
-  messages.value.push({ sender: 'user', text: query.value });
-  const userMsg = query.value;
-  query.value = '';
-  messages.value.push({ sender: 'ai', loading: true });
-  
-  isLoading.value = true;
-
-  try {
-    controller = new AbortController();
-    let res;
-
-    if (useAgent.value) {
-      res = await axios.post(
-        '/agent-chat', 
-        { email_content: userMsg }, 
-        { signal: controller.signal }
-      );
-      messages.value[messages.value.length - 1] = { sender: 'ai', text: res.data.summary || JSON.stringify(res.data) };
-    } else {
-      res = await axios.post(
-        '/chat', 
-        { query: userMsg },
-        { signal: controller.signal }
-      );
-      messages.value[messages.value.length - 1] = { sender: 'ai', text: res.data.response };
-    }
-  } catch (e) {
-    if (axios.isCancel(e)) {
-      messages.value[messages.value.length - 1] = { sender: 'ai', text: '（已停止生成）' };
-    } else {
-      messages.value[messages.value.length - 1] = { sender: 'ai', text: 'Error: ' + e.message };
-    }
-  } finally {
-    isLoading.value = false;
-    controller = null;
-  }
-};
-
-const stopGenerating = () => {
-  if (controller) {
-    controller.abort(); // 中斷axios請求
-  }
-  isLoading.value = false;
-  controller = null;
-};
-
-
-// 共用函式：從信件中讀取內容並送出
-const handleEmailChange = (autoSend = false) => {
+// ====== Outlook API integration ======
+function handleEmailChange(autoSend = false) {
   if (Office.context.mailbox?.item) {
     Office.context.mailbox.item.body.getAsync("text", (result) => {
       if (result.status === Office.AsyncResultStatus.Succeeded) {
         const content = result.value.trim()
         if (content) {
           query.value = content
-          if (autoSend) {
-            sendQuery()
-          }
-        } else {
-          alert("這封信內容為空白")
-        }
+          if (autoSend) sendQuery()
+        } else alert("This email body is empty.")
       } else {
-        alert("無法取得信件內容")
+        alert("Failed to retrieve email body.")
         console.error("getAsync error:", result.error)
       }
     })
   } else {
-    alert("無法存取信件物件")
+    alert("Cannot access email item.")
   }
 }
-
-// 觸發按鈕
-const sendEmailContent = () => {
+function sendEmailContent() {
   if (typeof Office === 'undefined' || !Office.context.mailbox?.item) {
-    alert("目前不在 Outlook 增益集環境，無法讀取郵件內容")
+    alert("Not inside Outlook add-in environment.")
     return
   }
-  handleEmailChange(true) // 點 email icon 時直接送出
+  handleEmailChange(true)
 }
 
-
-// 自動監聽信件切換（Taskpane 被 Pin 時）
+// ====== Initial setup when mounted ======
 onMounted(() => {
+  document.addEventListener('click', closeMenuOnOutside)
   if (typeof Office === 'undefined') return
-
-  Office.onReady().then(() => {
-    // 不再監聽信件切換，不做任何事
-  })
+  Office.onReady(() => { loading.value = false })
 })
+function closeMenuOnOutside(e) {
+  const drawer = document.querySelector('.history-drawer')
+  if (drawer && !drawer.contains(e.target)) closeMenu()
+}
 
+// ====== Chat handling ======
+const scrollToBottom = () => {
+  nextTick(() => {
+    if (chatBody.value) chatBody.value.scrollTop = chatBody.value.scrollHeight
+  })
+}
+watch(messages, scrollToBottom, { deep: true })
 
+const handleButtonClick = async () => {
+  if (isLoading.value) stopGenerating()
+  else await sendQuery()
+}
 
+const sendQuery = async () => {
+  if (!query.value.trim()) return
+
+  messages.value.push({ sender: 'user', text: query.value })
+  const userMsg = query.value
+  query.value = ''
+  messages.value.push({ sender: 'ai', loading: true })
+
+  isLoading.value = true
+
+  try {
+    controller = new AbortController()
+    let res
+    if (useAgent.value) {
+      res = await axios.post('/agent-chat', { email_content: userMsg }, { signal: controller.signal })
+      messages.value[messages.value.length - 1] = { sender: 'ai', text: res.data.summary || JSON.stringify(res.data) }
+    } else {
+      res = await axios.post('/chat', { query: userMsg }, { signal: controller.signal })
+      messages.value[messages.value.length - 1] = { sender: 'ai', text: res.data.response }
+    }
+  } catch (e) {
+    if (axios.isCancel(e)) {
+      messages.value[messages.value.length - 1] = { sender: 'ai', text: '(已停止生成)' }
+    } else {
+      messages.value[messages.value.length - 1] = { sender: 'ai', text: 'Error: ' + e.message }
+    }
+  } finally {
+    isLoading.value = false
+    controller = null
+  }
+}
+
+const stopGenerating = () => {
+  if (controller) controller.abort()
+  isLoading.value = false
+  controller = null
+}
 </script>
