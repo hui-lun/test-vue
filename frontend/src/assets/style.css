@@ -1,5 +1,29 @@
 /* assets/style.css: Outlook TaskPane-friendly CSS */
 
+
+.spinner {
+  border: 8px solid #f3f3f3;
+  border-top: 8px solid #3498db;
+  border-radius: 50%;
+  width: 60px;
+  height: 60px;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-screen {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: white;
+  z-index: 1000;
+}
+
 .delete-popover-mask {
   position: fixed;
   left: 0; top: 0; right: 0; bottom: 0;
@@ -275,7 +299,7 @@ body {
   background: #fff;
 }
 
-.chat-footer button {
+/* .chat-footer button {
   background: #1b5798;
   color: #fff;
   border: none;
@@ -293,6 +317,32 @@ body {
 
 .chat-footer button:hover:not(:disabled) {
   background: 1b5798;
+} */
+
+
+.send-button {
+  background: #296db5;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.send-button:hover {
+  background: #1b5798;
+}
+
+
+.stop-button {
+  background-color: #cccccc; /* 灰色 */
+  color: #333333;
+}
+
+.stop-button:hover {
+  background-color: #b0b0b0;
 }
 
 .loading-dots {
@@ -388,7 +438,7 @@ body {
   display: flex;
   align-items: center;
   flex-shrink: 0;
-  gap: 8px;
+  gap: 4px;
 }
 .drawer-title {
   font-weight: bold;
@@ -397,7 +447,7 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 140px;
+  max-width: 160px;
 }
 
 .drawer-item.selected {

@@ -11,7 +11,7 @@
   <ProviderName>Chatbot Dev</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
 
-  <DisplayName DefaultValue="Chatbot Giga4.5"/>
+  <DisplayName DefaultValue="Chatbot Giga5"/>
   <Description DefaultValue="A chatbot connected to your mail content"/>
   <IconUrl DefaultValue="https://officedev.github.io/Office-Add-in-samples/Samples/hello-world/outlook-hello-world/assets/icon-32.png"/>
   <HighResolutionIconUrl DefaultValue="https://officedev.github.io/Office-Add-in-samples/Samples/hello-world/outlook-hello-world/assets/icon-64.png"/>

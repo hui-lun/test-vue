@@ -1,4 +1,10 @@
 <template>
+  
+  
+  <div v-if="loading" class="loading-screen">
+    <div class="spinner"></div>
+  </div>
+
   <div class="chat-app">
     <!-- 遮罩 -->
     <div v-if="showHistoryMenu" class="drawer-mask" @click="closeHistoryMenu"></div>
@@ -101,13 +107,16 @@
     </div>
 
     <!-- 聊天輸入區 -->
-    <form class="chat-footer" @submit.prevent="sendQuery">
+    <form class="chat-footer" @submit.prevent="handleButtonClick">
       <input 
         v-model="query" 
         placeholder="請輸入訊息...." 
         autocomplete="off" 
       />
-      <button type="submit">送出</button>
+
+      <button type="submit" :class="['send-button', { 'stop-button': isLoading }]" >
+        {{ isLoading ? "停止" : "送出" }}
+      </button>
 
       <label style="display:flex;align-items:center;margin-left:12px;font-size:1.1em;gap:4px">
         <input 
@@ -236,15 +245,16 @@ function closeMenuOnOutside(e) {
 }
 
 
-// const clearMessages = () => {
-//   if (window.confirm('確定要刪除所有聊天紀錄嗎？')) {
-//     messages.value = []
-//   }
-// }
+const loading = ref(true);
+
+onMounted(() => {
+  Office.onReady(() => {
+    loading.value = false;
+  });
+});
+
+
 const useAgent = ref(false)
-
-
-
 
 const chatBody = ref(null)
 
@@ -258,35 +268,80 @@ const scrollToBottom = () => {
 
 watch(messages, scrollToBottom, { deep: true })
 
+const isLoading = ref(false);
+let controller = null; // 控制請求中斷
+
+const handleButtonClick = async () => {
+  if (isLoading.value) {
+    // 如果正在 loading，按下按鈕就是停止生成
+    stopGenerating();
+  } else {
+    // 如果沒 loading，按下按鈕就是正常送出
+    await sendQuery();
+  }
+};
+
 const sendQuery = async () => {
-  if (!query.value.trim()) return
-  messages.value.push({ sender: 'user', text: query.value })
-  const userMsg = query.value
-  query.value = ''
-  messages.value.push({ sender: 'ai', loading: true })
+  if (!query.value.trim()) return;
+
+  messages.value.push({ sender: 'user', text: query.value });
+  const userMsg = query.value;
+  query.value = '';
+  messages.value.push({ sender: 'ai', loading: true });
+  
+  isLoading.value = true;
+
   try {
-    let res
+    controller = new AbortController();
+    let res;
+
     if (useAgent.value) {
-      res = await axios.post('/agent-chat', { email_content: userMsg })
-      messages.value[messages.value.length - 1] = { sender: 'ai', text: res.data.summary || JSON.stringify(res.data) }
+      res = await axios.post(
+        '/agent-chat', 
+        { email_content: userMsg }, 
+        { signal: controller.signal }
+      );
+      messages.value[messages.value.length - 1] = { sender: 'ai', text: res.data.summary || JSON.stringify(res.data) };
     } else {
-      res = await axios.post('/chat', { query: userMsg })
-      messages.value[messages.value.length - 1] = { sender: 'ai', text: res.data.response }
+      res = await axios.post(
+        '/chat', 
+        { query: userMsg },
+        { signal: controller.signal }
+      );
+      messages.value[messages.value.length - 1] = { sender: 'ai', text: res.data.response };
     }
   } catch (e) {
-    messages.value[messages.value.length - 1] = { sender: 'ai', text: 'Error: ' + e.message }
+    if (axios.isCancel(e)) {
+      messages.value[messages.value.length - 1] = { sender: 'ai', text: '（已停止生成）' };
+    } else {
+      messages.value[messages.value.length - 1] = { sender: 'ai', text: 'Error: ' + e.message };
+    }
+  } finally {
+    isLoading.value = false;
+    controller = null;
   }
-}
+};
+
+const stopGenerating = () => {
+  if (controller) {
+    controller.abort(); // 中斷axios請求
+  }
+  isLoading.value = false;
+  controller = null;
+};
+
 
 // 共用函式：從信件中讀取內容並送出
-const handleEmailChange = () => {
+const handleEmailChange = (autoSend = false) => {
   if (Office.context.mailbox?.item) {
     Office.context.mailbox.item.body.getAsync("text", (result) => {
       if (result.status === Office.AsyncResultStatus.Succeeded) {
         const content = result.value.trim()
         if (content) {
           query.value = content
-          // sendQuery(content)
+          if (autoSend) {
+            sendQuery()
+          }
         } else {
           alert("這封信內容為空白")
         }
@@ -306,7 +361,7 @@ const sendEmailContent = () => {
     alert("目前不在 Outlook 增益集環境，無法讀取郵件內容")
     return
   }
-  handleEmailChange()
+  handleEmailChange(true) // 點 email icon 時直接送出
 }
 
 
@@ -315,15 +370,10 @@ onMounted(() => {
   if (typeof Office === 'undefined') return
 
   Office.onReady().then(() => {
-    // 自動監聽 pin 狀態下的信件變更
-    Office.context.mailbox.addHandlerAsync(
-      Office.EventType.ItemChanged,
-      handleEmailChange
-    )
+    // 不再監聽信件切換，不做任何事
   })
 })
 
 
 
 </script>
-
