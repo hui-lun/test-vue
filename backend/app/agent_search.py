@@ -2,6 +2,7 @@ import re
 from langchain_community.utilities import DuckDuckGoSearchAPIWrapper
 from .main import llm
 
+# === Optimize Query ===
 def optimize_query(query: str) -> str:
     prompt = (
         f"Please directly reply with the most precise and most suitable English keywords for DuckDuckGo search, without any additional text, only reply with the keywords: \n{query}"
@@ -13,7 +14,7 @@ def optimize_query(query: str) -> str:
         return content.splitlines()[0].strip()
     except Exception:
         return query
-
+# === Score ===
 def score_result(res: dict, keywords: list[str]) -> int:
     """
     Calculate the total number of times all keywords in keywords appear within a single search result (res).
@@ -21,12 +22,13 @@ def score_result(res: dict, keywords: list[str]) -> int:
     combined = (res.get("title", "") + " " + res.get("snippet", "")).lower()
     return sum(combined.count(kw) for kw in keywords)
 
+# === Keyword Filter ===
 def keyword_filter(query: str, results: list, top_k: int = 5) -> list:
     keywords = re.findall(r'\w+', query.lower())
     scored = sorted(results, key=lambda r: score_result(r, keywords), reverse=True)
     
     return scored[:top_k]
-
+# === Search and Summarize Advanced ===
 def search_and_summarize_advanced(query: str, max_results: int = 10, top_k: int = 5) -> str:
     """
     Use DuckDuckGoSearchAPIWrapper to fetch structured search results (with URLs), automatically filter the top_k most relevant results using keyword matching, and then summarize the filtered results with LLM.
