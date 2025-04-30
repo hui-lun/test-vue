@@ -21,5 +21,5 @@ app.include_router(agent_router)
 app.include_router(search_router)
 
 @app.get("/")
-def root():
+async def root():
     return {"message": "LangGraph + LangChain backend running!"}
