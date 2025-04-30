@@ -19,8 +19,15 @@ def score_result(res: dict, keywords: list[str]) -> int:
     """
     Calculate the total number of times all keywords in keywords appear within a single search result (res).
     """
-    combined = (res.get("title", "") + " " + res.get("snippet", "")).lower()
-    return sum(combined.count(kw) for kw in keywords)
+    title = res.get("title", "").lower()
+    snippet = res.get("snippet", "").lower()[:200]
+    combined = title + " " + snippet
+
+    coverage = sum(1 for kw in keywords if kw in combined) / len(keywords)
+    score = 3 * sum(kw in title for kw in keywords) + sum(kw in snippet for kw in keywords)
+    return score + 5 * coverage
+    # combined = (res.get("title", "") + " " + res.get("snippet", "")).lower()
+    # return sum(combined.count(kw) for kw in keywords)
 
 # === Keyword Filter ===
 def keyword_filter(query: str, results: list, top_k: int = 5) -> list:
