@@ -79,8 +79,8 @@ VLLM_API_BASE=http://localhost:8090/v1
 ---
 
 ## API Endpoints
-- `POST /chat` — Standard chat
-- `POST /agent-chat` — Agent workflow (e.g., email to SQL, web, or reply)
+- `POST /chat` — Standard chat (e.g. auto select tool)
+- `POST /agent-chat` — Agent chat(e.g. SQL tool)
 - `POST /search-and-summarize` — Web search and summarization
 
 ---
