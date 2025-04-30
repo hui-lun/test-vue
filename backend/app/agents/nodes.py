@@ -1,8 +1,12 @@
+import logging
+
 from app.config import llm
 from app.agents.sql import agent_sql
 from app.agents.chatstate import ChatState
 from app.agents.tools import fetch_and_analyze_web_html_node
 from langchain.prompts import PromptTemplate
+
+logger = logging.getLogger(__name__)
 
 def is_natural_query(text: str) -> bool:
     email_indicators = ["subject:", "dear", "regards", "best", "sincerely", "message", "thank you"]
@@ -21,10 +25,9 @@ Only respond with the query intention.
 
 parse_chain = email_parse_prompt | llm
 
-
 # === Node Definitions ===
 def parse_email(state: ChatState) -> ChatState:
-    # print("[DEBUG] parse_email - input state:", state)
+    # logger.info("[Tool Branch] Executing parse_email (Email parsing)")
     email = state.get("email_content", "").strip()
     if is_natural_query(email):
         user_query = email
@@ -37,10 +40,11 @@ def parse_email(state: ChatState) -> ChatState:
         "summary": state.get("summary", ""),
         "next_node": "select_tool"
     }
-    # print("[DEBUG] parse_email - output state:", new_state)
+    # logger.debug("[DEBUG] parse_email - output state: %s", new_state)
     return new_state
 
 def select_tool(state: ChatState) -> ChatState:
+    logger.info("[Tool Branch] Executing select_tool (Tool selection)")
     prompt = (
         f"Given the question: '{state['user_query']}', decide which tool to use:\n"
         "1. If the question is about retrieving data from the database, return 'sql_query'.\n"

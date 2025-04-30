@@ -1,6 +1,10 @@
+import logging
+
 from fastapi import APIRouter
 from app.models.models import ChatRequest
 from app.agents.workflow import run_agent_workflow
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 

@@ -1,3 +1,5 @@
+import logging
+
 from langchain.tools import tool
 from langchain.agents.agent import AgentFinish
 
@@ -5,18 +7,19 @@ from langchain.agents.agent import AgentFinish
 from app.agents.sql import agent_sql
 from app.agents.search import search_and_summarize_advanced
 
+logger = logging.getLogger(__name__)
+
 @tool("run_sql_agent", return_direct=True)
 def run_sql_agent(query: str) -> dict:
     """
     Query SQL database and return summary.
     Suitable for: database queries, statistical data, analysis reports, etc.
     """
-    # print("[DEBUG] run_sql_agent - input query:", query)
+    logger.info("[Tool Branch] Executing run_sql_agent (SQL query)")
     if not isinstance(query, str) or not query.strip():
         summary = "Please provide a clear query content."
     else:
         try:
-            # print("[DEBUG] agent_sql.invoke input:", {"input": query})
             result = agent_sql.invoke({"input": query})
             if isinstance(result, AgentFinish):
                 summary = result.return_values.get("output", "")
@@ -31,16 +34,17 @@ def run_sql_agent(query: str) -> dict:
         "user_query": query,
         "summary": summary
     }
-    # print("[DEBUG] run_sql_agent - output state:", new_state)
+    # logger.debug("[DEBUG] run_sql_agent - output state: %s", new_state)
     return new_state
+
 
 @tool("fetch_and_analyze_web_html_node", return_direct=True)
 def fetch_and_analyze_web_html_node(query: str) -> dict:
     """
     Used for web analysis and external search, returns a brief summary.
     """
-    # print("[DEBUG] fetch_and_analyze_web_html_node - input query:", query)
-    print("[Tool Branch] Executing fetch_and_analyze_web_html_node (Web analysis/search)")
+    # logger.debug("[DEBUG] fetch_and_analyze_web_html_node - input query: %s", query)
+    # logger.info("[Tool Branch] Executing fetch_and_analyze_web_html_node (Web analysis/search)")
     if not isinstance(query, str) or not query.strip():
         summary = "Please provide webpage content or keywords to analyze or search."
     else:
@@ -53,5 +57,5 @@ def fetch_and_analyze_web_html_node(query: str) -> dict:
         "user_query": query,
         "summary": summary
     }
-    # print("[DEBUG] fetch_and_analyze_web_html_node - output state:", new_state)
+    # logger.debug("[DEBUG] fetch_and_analyze_web_html_node - output state: %s", new_state)
     return new_state

@@ -1,7 +1,11 @@
+import logging
+
 from fastapi import APIRouter
 from app.models.models import SearchAndSummarizeRequest
 # from app.agents.search import search_and_summarize_advanced
 from app.agents.workflow import run_agent_workflow
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 

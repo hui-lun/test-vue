@@ -39,36 +39,30 @@ BDM-chat/
 ## Getting Started
 
 ### Prerequisites
-- Python 3.10+
-- Node.js 18+
-- Docker & Docker Compose (for production or quick start)
-- PostgreSQL (or use Docker service)
+- Docker & Docker Compose (recommended for all platforms)
+- (Optional for development) Python 3.10+, Node.js 18+, PostgreSQL
 
 ### Environment Variables
 Set the following in your `.env` or Docker Compose:
 - `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`
 - `VLLM_API_BASE` (for LLM API endpoint)
 
-### Local Development
-1. **Start backend**
+### Quick Start (Recommended)
+1. Copy and edit environment variables:
     ```bash
-    cd backend
-    uvicorn app.main:app --reload
+    cp .env.example .env
+    # Edit .env as needed
     ```
-2. **Start frontend**
+2. Start all services (backend + frontend + database) with Docker Compose:
     ```bash
-    cd frontend
-    npm install
-    npm run dev
+    sudo docker compose up --build
     ```
 3. Visit [http://localhost:8080](http://localhost:8080) (or the port shown)
 
-### Docker Compose (Recommended)
-```bash
-cd BDM-chat
-cp .env.example .env   # Edit as needed
-sudo docker compose up --build
-```
+### Local Development (Advanced)
+- You can also run backend and frontend separately for development:
+    - Backend: `cd backend && uvicorn app.main:app --reload`
+    - Frontend: `cd frontend && npm install && npm run dev`
 
 ---
 
