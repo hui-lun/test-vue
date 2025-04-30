@@ -1,6 +1,6 @@
 import re
 from langchain_community.utilities import DuckDuckGoSearchAPIWrapper
-from .main import llm
+from app.config import llm
 
 # === Optimize Query ===
 def optimize_query(query: str) -> str:

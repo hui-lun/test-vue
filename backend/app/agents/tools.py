@@ -2,8 +2,8 @@ from langchain.tools import tool
 from langchain.agents.agent import AgentFinish
 
 # Import required agents: agent_sql, search_and_summarize
-from .agent import agent_sql
-from .agent_search import search_and_summarize_advanced
+from app.agents.sql import agent_sql
+from app.agents.search import search_and_summarize_advanced
 
 @tool("run_sql_agent", return_direct=True)
 def run_sql_agent(query: str) -> dict:

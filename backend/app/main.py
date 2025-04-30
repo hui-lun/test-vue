@@ -1,14 +1,17 @@
-from fastapi import FastAPI, Depends
+import os
+from fastapi import FastAPI
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from langchain_openai import ChatOpenAI
-import os
+from fastapi.middleware.cors import CORSMiddleware
+
+from app.routers.chat_router import router as chat_router
+from app.routers.agent_router import router as agent_router
+from app.routers.search_router import router as search_router
+
 
 DATABASE_URL = f"postgresql://{os.getenv('POSTGRES_USER')}:{os.getenv('POSTGRES_PASSWORD')}@{os.getenv('POSTGRES_HOST')}:{os.getenv('POSTGRES_PORT')}/{os.getenv('POSTGRES_DB')}"
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
 
@@ -20,53 +23,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# LLM config
-llm = ChatOpenAI(
-    model="gemma-3-27b-it",
-    openai_api_key="EMPTY",
-    openai_api_base=os.getenv("VLLM_API_BASE")
-)
-
-from pydantic import BaseModel
-from .agent import run_agent_workflow
-from .agent_search import search_and_summarize_advanced
-
-
-class ChatRequest(BaseModel):
-    query: str
-
-class AgentChatRequest(BaseModel):
-    email_content: str
-
-class SearchAndSummarizeRequest(BaseModel):
-    query: str
-
+# routers
+app.include_router(chat_router)
+app.include_router(agent_router)
+app.include_router(search_router)
 
 @app.get("/")
 def root():
     return {"message": "LangGraph + LangChain backend running!"}
-
-@app.post("/agent-chat")
-def agent_chat(req: AgentChatRequest):
-    result = run_agent_workflow(req.email_content)
-    # print("[DEBUG] /agent-chat triggered, email_content:", req.email_content)
-    if hasattr(result, "dict"):
-        result_dict = result.dict()
-    else:
-        result_dict = dict(result)
-    return {"summary": result_dict.get("summary", ""), "full_result": result_dict}
-
-
-@app.post("/chat")
-def chat(req: ChatRequest):
-    # print("[DEBUG] /chat called, req.query:", req.query)
-    result = run_agent_workflow(req.query)
-    # print("[DEBUG] /chat run_agent_workflow result:", result)
-    result_dict = dict(result)
-    return {"summary": str(result_dict.get("summary", ""))}
-
-@app.post("/search-and-summarize")
-def search_and_summarize_api(req: SearchAndSummarizeRequest):
-    # summary = search_and_summarize(req.query)
-    summary = search_and_summarize_advanced(req.query)
-    return {"summary": summary}
