@@ -3,7 +3,6 @@ import logging
 from langchain.tools import tool
 from langchain.agents.agent import AgentFinish
 
-# Import required agents: agent_sql, search_and_summarize
 from app.agents.sql import agent_sql
 from app.agents.search import search_and_summarize_advanced
 
@@ -38,13 +37,13 @@ def run_sql_agent(query: str) -> dict:
     return new_state
 
 
-@tool("fetch_and_analyze_web_html_node", return_direct=True)
-def fetch_and_analyze_web_html_node(query: str) -> dict:
+@tool("fetch_and_analyze_web_html", return_direct=True)
+def fetch_and_analyze_web_html(query: str) -> dict:
     """
     Used for web analysis and external search, returns a brief summary.
     """
-    # logger.debug("[DEBUG] fetch_and_analyze_web_html_node - input query: %s", query)
-    # logger.info("[Tool Branch] Executing fetch_and_analyze_web_html_node (Web analysis/search)")
+    # logger.debug("[DEBUG] fetch_and_analyze_web_html - input query: %s", query)
+    # logger.info("[Tool Branch] Executing fetch_and_analyze_web_html (Web analysis/search)")
     if not isinstance(query, str) or not query.strip():
         summary = "Please provide webpage content or keywords to analyze or search."
     else:
@@ -57,5 +56,5 @@ def fetch_and_analyze_web_html_node(query: str) -> dict:
         "user_query": query,
         "summary": summary
     }
-    # logger.debug("[DEBUG] fetch_and_analyze_web_html_node - output state: %s", new_state)
+    # logger.debug("[DEBUG] fetch_and_analyze_web_html - output state: %s", new_state)
     return new_state

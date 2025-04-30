@@ -3,7 +3,7 @@ import logging
 from app.config import llm
 from app.agents.sql import agent_sql
 from app.agents.chatstate import ChatState
-from app.agents.tools import fetch_and_analyze_web_html_node
+from app.agents.tools import fetch_and_analyze_web_html
 from langchain.prompts import PromptTemplate
 
 logger = logging.getLogger(__name__)
@@ -82,7 +82,7 @@ def sql_agent_node(state: ChatState) -> ChatState:
 
 def web_analysis_node(state: ChatState) -> ChatState:
     try:
-        result = fetch_and_analyze_web_html_node.invoke({"query": state["user_query"]})
+        result = fetch_and_analyze_web_html.invoke({"query": state["user_query"]})
         if isinstance(result, dict):
             summary = result.get("summary", str(result))
         else:
