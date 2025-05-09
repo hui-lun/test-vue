@@ -60,3 +60,22 @@ def fetch_and_analyze_web_html(query: str) -> dict:
     }
     # logger.debug("[DEBUG] fetch_and_analyze_web_html - output state: %s", new_state)
     return new_state
+
+
+
+@tool("analyze_spec", return_direct=True)
+def analyze_spec_tool(text: str) -> dict:
+    """
+    Query the specification database and generate a summary using LLM. 
+    Returns a standard dictionary with email_content, user_query, and summary fields.
+    Args:
+        text (str): The user query or specification request.
+    """
+    from app.agents.spec_analyze import search_database
+    response = search_database(text)
+    summary = response.content if hasattr(response, 'content') else str(response)
+    return {
+        "email_content": "",
+        "user_query": text,
+        "summary": summary
+    }

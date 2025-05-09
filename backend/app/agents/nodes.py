@@ -3,7 +3,7 @@ import logging
 from app.config import llm
 from app.agents.sql import agent_sql
 from app.agents.chatstate import ChatState
-from app.agents.tools import fetch_and_analyze_web_html, run_sql_agent
+from app.agents.tools import fetch_and_analyze_web_html, run_sql_agent, analyze_spec_tool
 from langchain.prompts import PromptTemplate
 from langchain.agents import create_react_agent, AgentExecutor
 
@@ -45,7 +45,9 @@ def parse_email(state: ChatState) -> ChatState:
     return new_state
 
 
-tools=[run_sql_agent, fetch_and_analyze_web_html]
+# tools=[run_sql_agent, fetch_and_analyze_web_html, analyze_spec_tool]
+tools=[fetch_and_analyze_web_html, analyze_spec_tool]
+
 
 react_prompt = PromptTemplate.from_template(
     "You are a helpful assistant that uses tools to answer questions.\n"

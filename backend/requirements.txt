@@ -3,6 +3,7 @@ uvicorn
 langchain
 langchain-openai
 langgraph
+langgraph-checkpoint-sqlite==2.0.6
 psycopg2-binary
 SQLAlchemy
 langchain-community
@@ -10,3 +11,5 @@ graphviz
 beautifulsoup4
 pydantic
 duckduckgo-search
+O365==2.1.2
+pymongo
