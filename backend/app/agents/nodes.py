@@ -3,8 +3,9 @@ import logging
 from app.config import llm
 from app.agents.sql import agent_sql
 from app.agents.chatstate import ChatState
-from app.agents.tools import fetch_and_analyze_web_html
+from app.agents.tools import fetch_and_analyze_web_html, run_sql_agent
 from langchain.prompts import PromptTemplate
+from langchain.agents import create_react_agent, AgentExecutor
 
 logger = logging.getLogger(__name__)
 
@@ -38,62 +39,72 @@ def parse_email(state: ChatState) -> ChatState:
         "email_content": email,
         "user_query": user_query,
         "summary": state.get("summary", ""),
-        "next_node": "select_tool"
+        "next_node": "react_agent"
     }
     # logger.debug("[DEBUG] parse_email - output state: %s", new_state)
     return new_state
 
-def select_tool(state: ChatState) -> ChatState:
-    logger.info("[Tool Branch] Executing select_tool (Tool selection)")
-    prompt = (
-        f"Given the question: '{state['user_query']}', decide which tool to use:\n"
-        "1. If the question is about retrieving data from the database, return 'sql_query'.\n"
-        "2. If the question requires analyzing web content, return 'web_analysis'.\n"
-        "ONLY return the exact tool name without explanation."
-    )
-    predicted_label = llm.invoke(prompt).content.strip().lower()
 
-    new_state = state.copy()
-    if predicted_label == "sql_query":
-        new_state["next_node"] = "sql_agent"
-    elif predicted_label == "web_analysis":
-        new_state["next_node"] = "web_analysis"
-    else:
-        new_state["next_node"] = "generate_email_reply"
-    
-    return new_state
+tools=[run_sql_agent, fetch_and_analyze_web_html]
 
-def sql_agent_node(state: ChatState) -> ChatState:
+react_prompt = PromptTemplate.from_template(
+    "You are a helpful assistant that uses tools to answer questions.\n"
+    "You have access to the following tools:\n"
+    "{tools}\n"
+    "\n"
+    "Use the following format:\n"
+    "Question: the input question you must answer\n"
+    "Thought: you should always think about what to do\n"
+    "Action: the action to take, should be one of [{tool_names}]\n"
+    "Action Input: the input to the action\n"
+    "Observation: the result of the action\n"
+    "... (this Thought/Action/Action Input/Observation can be repeated zero or more times)\n"
+    "Thought: I now know the final answer\n"
+    "Final Answer: the final answer to the original input question\n"
+    "\n"
+    "Question: {input}\n"
+    "Thought: I need to decide which tool to use to answer this question\n"
+    "Action: the action to take, should be one of [{tool_names}]\n"
+    "Action Input: {input}\n"
+    "Observation: the result of the action\n"
+    "Thought: I now know which tool to use\n"
+    "Final Answer: {agent_scratchpad}\n"
+)
+
+react_agent = create_react_agent(
+    llm=llm,
+    tools=tools,
+    prompt=react_prompt
+)
+
+def select_tool_agent(state: ChatState) -> ChatState:
     try:
-        result = agent_sql.invoke({"input": state["user_query"]})
-        if isinstance(result, dict):
-            summary = result.get("output", "")
-            if not summary:
-                summary = str(result)
+        agent_executor = AgentExecutor(agent=react_agent, tools=tools, verbose=True)
+        result = agent_executor.invoke({"input": state["user_query"]})
+        
+        summary = ""
+        if isinstance(result, dict) and isinstance(result.get("output"), dict):
+            summary = result["output"].get("summary", "")
+        elif isinstance(result, dict) and "summary" in result:
+            summary = result["summary"]
         else:
             summary = str(result)
-    except Exception as e:
-        summary = f"Error occurred during SQL query: {e}"
-    
-    new_state = state.copy()
-    new_state["summary"] = summary
-    new_state["next_node"] = "generate_email_reply"
-    return new_state
 
-def web_analysis_node(state: ChatState) -> ChatState:
-    try:
-        result = fetch_and_analyze_web_html.invoke({"query": state["user_query"]})
-        if isinstance(result, dict):
-            summary = result.get("summary", str(result))
-        else:
-            summary = str(result)
+        new_state: ChatState = {
+            "email_content": state.get("email_content", ""),
+            "user_query": state.get("user_query", ""),
+            "summary": summary,
+            "next_node": "generate_email_reply"
+        }
+        return new_state
     except Exception as e:
-        summary = f"Error occurred during web analysis: {e}"
-    
-    new_state = state.copy()
-    new_state["summary"] = summary
-    new_state["next_node"] = "generate_email_reply"
-    return new_state
+        logger.error("[React Agent] Error in react_agent_node:", exc_info=True)
+        return {
+            "email_content": state.get("email_content", ""),
+            "user_query": state.get("user_query", ""),
+            "summary": f"Error occurred during React Agent execution: {str(e)}",
+            "next_node": "generate_email_reply"
+        }
 
 def generate_email_reply(state: ChatState) -> ChatState:
     reply = f"""

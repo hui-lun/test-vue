@@ -9,7 +9,7 @@
         <span class="icon" @click="clearMessages" title="清除聊天紀錄">🗑️</span>
         <span class="icon">✉️</span>
         <span class="icon">👤</span>
-        <span class="icon" @click="activateSearchSummarizeMode" title="自動搜尋與摘要">🔎</span>
+        <!-- <span class="icon" @click="activateSearchSummarizeMode" title="自動搜尋與摘要">🔎</span> -->
       </div>
     </div>
     <div class="chat-body" ref="chatBody">
@@ -26,6 +26,10 @@
       <label style="display:flex;align-items:center;margin-left:12px;font-size:1.1em;gap:4px">
         <input type="checkbox" v-model="useAgent" style="width:22px;height:22px;accent-color:#1976d2;margin-right:4px" />
         啟用智能助理
+      </label>
+      <label style="display:flex;align-items:center;margin-left:12px;font-size:1.1em;gap:4px">
+        <input type="checkbox" v-model="useSearchSummarizeMode" style="width:22px;height:22px;accent-color:#1976d2;margin-right:4px" />
+        啟用搜尋與摘要模式
       </label>
     </form>
 
@@ -83,7 +87,6 @@ const sendQuery = async () => {
       // 搜尋與摘要模式
       res = await axios.post('/search-and-summarize', { query: userMsg })
       messages.value[messages.value.length - 1] = { sender: 'ai', text: res.data.summary || JSON.stringify(res.data) }
-      useSearchSummarizeMode.value = false
     } else if (useAgent.value) {
       res = await axios.post('/agent-chat', { email_content: userMsg })
       messages.value[messages.value.length - 1] = { sender: 'ai', text: res.data.summary || JSON.stringify(res.data) }

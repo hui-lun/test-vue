@@ -5,7 +5,9 @@ from app.config import llm
 # === Optimize Query ===
 def optimize_query(query: str) -> str:
     prompt = (
-        f"Please directly reply with the most precise and most suitable English keywords for DuckDuckGo search, without any additional text, only reply with the keywords: \n{query}"
+        f"Only reply with the most suitable English keywords for DuckDuckGo search, no explanations, no punctuation, no extra words. "
+        f"Just output the keywords:\n{query}\n"
+        f"Please follow the whole of query {query} to optimize the keywords."
     )
     try:
         result = llm.invoke(prompt)
@@ -23,9 +25,10 @@ def score_result(res: dict, keywords: list[str]) -> int:
     snippet = res.get("snippet", "").lower()[:200]
     combined = title + " " + snippet
 
-    coverage = sum(1 for kw in keywords if kw in combined) / len(keywords)
-    score = 3 * sum(kw in title for kw in keywords) + sum(kw in snippet for kw in keywords)
-    return score + 5 * coverage
+    coverage      = sum(1 for kw in keywords if kw in combined) / len(keywords)
+    total_matches = sum(combined.count(kw) for kw in keywords)
+    score         = total_matches + 2 * coverage
+    return score
     # combined = (res.get("title", "") + " " + res.get("snippet", "")).lower()
     # return sum(combined.count(kw) for kw in keywords)
 
@@ -46,19 +49,21 @@ def search_and_summarize_advanced(query: str, max_results: int = 10, top_k: int 
     print('********************************') 
     print(f"Optimized Query: {optimized_query}")
     print('********************************')
-    try:
-        results = duck_api.results(optimized_query, max_results)
-    except Exception as e:
-        return f"DuckDuckGo search failed: {e}"
-    if not results or not isinstance(results, list):
-        return "No relevant webpages found."
+    # try:
+    #     results = duck_api.results(optimized_query, max_results)
+    # except Exception as e:
+    #     return f"DuckDuckGo search failed: {e}"
+    # if not results or not isinstance(results, list):
+    #     return "No relevant webpages found."
 
+    full_query = f"{query} {optimized_query}"
+    results = duck_api.results(full_query, max_results)
     # Automatically focus the top_k most relevant results using keyword matching
-    filtered = keyword_filter(query, results, top_k=top_k)
+    filtered = keyword_filter(full_query, results, top_k=top_k)
 
     context = ""
     print('********************************')
-    print(f"Search Results: {filtered}")
+    print(f"Filtered Results: {filtered}")
     print('********************************')
     for idx, res in enumerate(filtered, 1):
         title = res.get("title", "")
@@ -67,13 +72,15 @@ def search_and_summarize_advanced(query: str, max_results: int = 10, top_k: int 
         context += f"{idx}. {title}\n{snippet}\nURL: {url}\n\n"
     prompt = (
         f"Based ONLY on the following DuckDuckGo search results, answer the user's question as accurately as possible.\n"
-        f"Question: {query}\n"
+        f"Original Question: {query}\n"
+        f"Optimized Question: {optimized_query}\n"
         f"Search Results:\n{context}\n"
-        f"- Only use information from the search results. Do NOT use any prior knowledge.\n"
-        f"- If the answer cannot be found in the search results, do NOT make up an answer. Instead, reply: 'Not enough information in the search results.'\n"
-        f"- Summarize the answer in 150 words or less, avoid repeating content.\n"
-        f"- Do not include the results number in the answer.\n"
-        f"- Do not include the URL in the answer.\n"
+        f"- Only use information that is explicitly present in the search results. Do NOT use any prior knowledge, inference, or assumptions.\n"
+        f"- If the answer cannot be found in the search results, reply exactly: 'Not enough information in the search results.'\n"
+        f"- Summarize the answer in 200 words or less. Avoid repeating content or the question.\n"
+        f"- The answer should be a single, concise paragraph in plain text, without any special formatting, bullet points, or markdown symbols.\n"
+        f"- Do not include the results number or URL in the answer.\n"
+        f"- Do not include any ** or * in the answer.\n"
     )
     try:
         answer = llm.invoke(prompt)

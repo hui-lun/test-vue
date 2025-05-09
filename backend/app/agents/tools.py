@@ -42,13 +42,15 @@ def fetch_and_analyze_web_html(query: str) -> dict:
     """
     Used for web analysis and external search, returns a brief summary.
     """
-    # logger.debug("[DEBUG] fetch_and_analyze_web_html - input query: %s", query)
-    # logger.info("[Tool Branch] Executing fetch_and_analyze_web_html (Web analysis/search)")
+    logger.info("[Tool Branch] Executing fetch_and_analyze_web_html (Web analysis/search)")
     if not isinstance(query, str) or not query.strip():
         summary = "Please provide webpage content or keywords to analyze or search."
     else:
         try:
             summary = search_and_summarize_advanced(query)
+            print('------------------')
+            print(summary)
+            print('------------------')
         except Exception as e:
             summary = f"Error occurred during web analysis: {e}"
     new_state = {
